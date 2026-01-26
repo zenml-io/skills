@@ -52,7 +52,74 @@ Guides users through discovering and implementing high-impact ZenML features tha
 
 ## Phase 1: Investigation
 
-Run these commands to understand the current ZenML setup:
+**Use subagents to gather information efficiently.** This keeps verbose output out of the main conversation while enabling parallel investigation.
+
+### Recommended: Parallel Subagent Investigation
+
+Spawn **both subagents in parallel** using a single Task tool call with multiple invocations:
+
+```
+Use the Task tool to launch BOTH agents simultaneously:
+
+1. zenml-stack-investigator agent:
+   - Prompt: "Investigate the ZenML stack configuration for this project.
+     Run all the ZenML CLI commands to understand stacks, components,
+     and recent pipeline activity. Return a structured summary."
+
+2. zenml-codebase-analyzer agent:
+   - Prompt: "Analyze the Python codebase for ZenML patterns and quick win
+     opportunities. Search for pipeline definitions, current feature usage,
+     and areas for improvement. Return a structured summary."
+```
+
+Both agents run concurrently and return structured summaries. Synthesize their findings before proceeding to Phase 2.
+
+### What the Subagents Investigate
+
+**zenml-stack-investigator** (Bash-focused, Haiku model):
+- Runs `zenml status`, `zenml stack list`, `zenml stack describe`
+- Checks for experiment trackers, alerters, secrets, code repos, models
+- Fetches recent pipeline runs
+- Returns: Stack configuration, component status, pipeline activity summary
+
+**zenml-codebase-analyzer** (Read-only, Haiku model):
+- Searches for `@pipeline`, `@step` decorators
+- Checks for `log_metadata`, `tags=`, `Model(`, `HTMLString`, `Schedule`
+- Flags hardcoded credentials (security concern)
+- Returns: Feature adoption status, quick win opportunities, security concerns
+
+### Pattern Reference for Analysis
+
+| Pattern | Indicates | Quick Win Opportunity |
+|---------|-----------|----------------------|
+| `@pipeline` without `tags=` | No tagging | #9 Tags |
+| `@step` without `log_metadata` | No metadata | #1 Metadata |
+| No `HTMLString` imports | No HTML reports | #11 Reports |
+| No `Model()` usage | No model governance | #12 Model Control Plane |
+| Hardcoded credentials | Security risk | #7 Secrets |
+| No `Schedule` imports | Manual runs | #5 Scheduling |
+
+### Fallback: Manual Investigation
+
+If subagents are unavailable, run these commands directly.
+
+**First, activate the Python environment:**
+
+```bash
+# Check for uv project
+if [ -f "pyproject.toml" ] && command -v uv &> /dev/null; then
+    # Use "uv run zenml ..." for all commands below
+    echo "Using uv - prefix commands with 'uv run'"
+fi
+
+# Or activate venv/conda
+source .venv/bin/activate 2>/dev/null || source venv/bin/activate 2>/dev/null || echo "No venv found"
+
+# Verify zenml is available
+zenml version
+```
+
+**Then run the investigation commands:**
 
 ```bash
 # Core stack info
@@ -70,19 +137,6 @@ zenml model list 2>/dev/null || echo "No models registered"
 # Recent runs (check for metadata usage)
 zenml pipeline runs list --size=10 --output=json 2>/dev/null
 ```
-
-### Codebase Analysis
-
-Look for these patterns in Python files:
-
-| Pattern | Indicates | Quick Win Opportunity |
-|---------|-----------|----------------------|
-| `@pipeline` without `tags=` | No tagging | #9 Tags |
-| `@step` without `log_metadata` | No metadata | #1 Metadata |
-| No `HTMLString` imports | No HTML reports | #11 Reports |
-| No `Model()` usage | No model governance | #12 Model Control Plane |
-| Hardcoded credentials | Security risk | #7 Secrets |
-| No `Schedule` imports | Manual runs | #5 Scheduling |
 
 ### MCP Server Check
 

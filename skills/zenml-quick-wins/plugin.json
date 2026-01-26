@@ -18,5 +18,6 @@
     "experiment-tracking",
     "model-governance"
   ],
-  "skills": "./skills/"
+  "skills": "./skills/",
+  "agents": "./agents/"
 }
