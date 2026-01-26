@@ -58,3 +58,12 @@ This repository has no build, test, or lint commands. It contains only markdown 
 ## External Dependencies
 
 Skills reference ZenML documentation at `https://docs.zenml.io/` — keep doc links current when editing skills.
+
+## External Documentation
+
+Anthropic has great documentation and if you're doing something that relates to sharing plugins or the marketplace, do read their guides:
+
+- general high-level guide: https://code.claude.com/docs/en/plugins
+- Detailed plugin reference: https://code.claude.com/docs/en/plugins-reference
+- Full skills documentation: https://code.claude.com/docs/en/skills
+- Custom subagents docs: https://code.claude.com/docs/en/sub-agents
