@@ -4,10 +4,25 @@ Modular AI coding agent skills for ZenML workflows. Add the marketplace to your 
 
 <img width="991" height="973" alt="Screenshot of the quick wins skill in action inside Claude Code" src="https://github.com/user-attachments/assets/a6e54013-3033-41fd-abfa-e29d7b324e32" />
 
+## Quick Start (Claude Code)
+
+```bash
+# Step 1: Add the ZenML skills marketplace
+/plugin marketplace add zenml-io/skills
+
+# Step 2: Install the quick-wins skill
+/plugin install zenml-quick-wins@zenml
+
+# Step 3: Use it! Navigate to your ZenML project and run:
+/zenml-quick-wins
+```
+
+That's it! The skill will analyze your ZenML setup and guide you through implementing high-impact improvements.
+
 ## Supported Tools
 
-| Tool | Installation |
-|------|-------------|
+| Tool | Add Marketplace |
+|------|-----------------|
 | [Claude Code](https://code.claude.com/) | `/plugin marketplace add zenml-io/skills` |
 | [OpenAI Codex CLI](https://github.com/openai/codex) | `codex plugin add zenml-io/skills` |
 | [Cursor](https://cursor.sh) | Via settings configuration |
