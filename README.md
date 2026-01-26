@@ -10,7 +10,7 @@ Modular AI coding agent skills for ZenML workflows. Add the marketplace to your 
 # Step 1: Add the ZenML skills marketplace
 /plugin marketplace add zenml-io/skills
 
-# Step 2: Install the quick-wins skill
+# Step 2: Example: Install the quick-wins skill
 /plugin install zenml-quick-wins@zenml
 
 # Step 3: Use it! Navigate to your ZenML project and run:
