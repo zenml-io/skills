@@ -22,16 +22,30 @@ Guides users through discovering and implementing high-impact ZenML features tha
 └──────────┬──────────┘
            ▼
 ┌─────────────────────┐
-│  2. RECOMMEND       │  Prioritize quick wins based on findings
+│  2. CONFIRM         │  ⏸️ Check understanding with user
 └──────────┬──────────┘
            ▼
 ┌─────────────────────┐
-│  3. IMPLEMENT       │  Apply selected quick wins
+│  3. GATHER CONTEXT  │  ⏸️ Get additional context from user
 └──────────┬──────────┘
            ▼
 ┌─────────────────────┐
-│  4. VERIFY          │  Confirm implementation works
+│  4. RECOMMEND       │  Prioritize quick wins based on findings
+└──────────┬──────────┘
+           ▼
+┌─────────────────────┐
+│  5. PREPARE         │  ⏸️ Verify branch setup before changes
+└──────────┬──────────┘
+           ▼
+┌─────────────────────┐
+│  6. IMPLEMENT       │  Apply selected quick wins
+└──────────┬──────────┘
+           ▼
+┌─────────────────────┐
+│  7. VERIFY          │  Confirm implementation works
 └─────────────────────┘
+
+⏸️ = User checkpoint (uses AskUserQuestion tool)
 ```
 
 ---
@@ -81,7 +95,134 @@ If ZenML MCP server is available, use it for deeper exploration:
 
 ---
 
-## Phase 2: Recommendation
+## Phase 2: Confirm Understanding ⏸️
+
+**IMPORTANT: Stop and check in with the user before proceeding.**
+
+After investigation, summarize what you've learned and use the `AskUserQuestion` tool to confirm your understanding. This prevents wasted effort from misunderstandings.
+
+### What to Summarize
+
+Present your findings clearly:
+
+1. **Stack Configuration**
+   - Which stacks exist (local, staging, production, etc.)
+   - What the active stack contains (orchestrator type, artifact store, etc.)
+   - Any connected components (experiment trackers, alerters, secrets stores)
+
+2. **Pipeline Execution Patterns**
+   - How pipelines appear to be run (manual vs scheduled vs triggered)
+   - If schedules exist, note them explicitly
+   - Any orchestrator-specific patterns (Airflow DAGs, Kubeflow pipelines, etc.)
+
+3. **Current Feature Usage**
+   - Which ZenML features are already in use (metadata, tags, models, etc.)
+   - What's missing that could be quick wins
+
+### Confirmation Questions
+
+Use `AskUserQuestion` with questions like:
+
+**Stack Usage:**
+- "I found these stacks: [list]. Which is your primary development stack, and which is production?"
+- "Is `default` stack used for local development, or do you use a different one?"
+
+**Pipeline Execution:**
+- "I see [N] recent runs. Are these primarily manual runs, or is there a schedule I might have missed?"
+- "The pipeline appears to run on [orchestrator]. Is this your main execution environment?"
+
+**Feature Gaps:**
+- "I noticed [feature] isn't being used yet. Is that intentional, or an area you'd like to improve?"
+
+### Example Confirmation Message
+
+```markdown
+## 📋 Here's what I understand about your ZenML setup:
+
+**Stacks:**
+- `default` - Local stack (seems to be for development)
+- `aws-production` - AWS stack with SageMaker orchestrator
+
+**Active Stack:** `default` (LocalOrchestrator, local artifact store)
+
+**Recent Activity:**
+- 47 pipeline runs in the last month
+- All appear to be manual runs (no schedules detected)
+- Using `training_pipeline` and `inference_pipeline`
+
+**Current Features:**
+- ✅ Basic pipeline structure
+- ❌ No metadata logging detected
+- ❌ No tags on pipelines
+- ❌ No Model Control Plane usage
+
+**Questions for you:**
+1. Is `default` your local dev stack and `aws-production` for production?
+2. Are these pipelines meant to run on a schedule, or is manual execution intentional?
+3. Any other stacks or environments I should know about?
+```
+
+Wait for user confirmation before proceeding to Phase 3.
+
+---
+
+## Phase 3: Gather Context ⏸️
+
+**IMPORTANT: Gather tacit knowledge that isn't captured in code.**
+
+Before making recommendations, ask about context that affects implementation choices. Use `AskUserQuestion` to learn about:
+
+### Infrastructure Context
+
+- "Are there any infrastructure constraints or gotchas I should know about?"
+- "Any cloud resource limits, network restrictions, or compliance requirements?"
+- "Is there a shared artifact store, or does each environment have its own?"
+
+### Development Environment
+
+- "How do you typically develop and test pipelines locally before deploying?"
+- "Do you use a specific IDE, and is there any tooling I should be aware of?"
+- "Any CI/CD pipelines that interact with ZenML?"
+
+### Team Dynamics
+
+- "Is this a solo project or does a team work on these pipelines?"
+- "If team: any conventions or patterns the team follows that I should maintain?"
+- "Any upcoming changes or migrations planned that might affect recommendations?"
+
+### Operational Patterns
+
+- "How do you currently monitor pipeline health and failures?"
+- "When something breaks, how do you typically find out?"
+- "Any preferences for where alerts should go (Slack, email, etc.)?"
+
+### Example Context Gathering
+
+```markdown
+## 🔍 Before I make recommendations, some questions:
+
+**Infrastructure:**
+- Any constraints I should know about (resource limits, compliance, network)?
+- Anything that's worked poorly in the past with this setup?
+
+**Development:**
+- How does local development/testing work for your team?
+- Any CI/CD integration with ZenML?
+
+**Team:**
+- Solo project or team? (affects things like git hooks, naming conventions)
+- Any established patterns or conventions I should follow?
+
+**Operations:**
+- How do you currently learn about pipeline failures?
+- Preferences for alerting (Slack, Discord, email)?
+```
+
+Incorporate this context into your recommendations in Phase 4.
+
+---
+
+## Phase 4: Recommendation
 
 ### Quick Wins Catalog
 
@@ -127,11 +268,64 @@ If ZenML MCP server is available, use it for deeper exploration:
 11. **#14 ZenML docs MCP** — Better IDE assistance
 12. **#15 CLI export** — Scripting/automation
 
-Ask the user which quick wins they want to implement based on their findings and priorities.
+Use `AskUserQuestion` to ask which quick wins they want to implement based on your findings and their priorities. Present the most relevant options first based on the context gathered in previous phases.
 
 ---
 
-## Phase 3: Implementation
+## Phase 5: Prepare ⏸️
+
+**IMPORTANT: Verify git and branch setup before making any changes.**
+
+Before implementing any quick wins, ensure the codebase is ready for changes.
+
+### Git Status Check
+
+```bash
+# Check current branch and status
+git status
+git branch --show-current
+
+# Check for uncommitted changes
+git diff --stat
+```
+
+### Branch Confirmation
+
+Use `AskUserQuestion` to confirm branch setup:
+
+```markdown
+## 🌿 Before I make changes, let's confirm the branch setup:
+
+**Current state:**
+- Branch: `main` (or whatever branch)
+- Status: [clean / X uncommitted changes]
+
+**Questions:**
+1. Should I create a feature branch for these changes? (Recommended: `feature/zenml-quick-wins`)
+2. If yes, is `main` the correct base branch, or should I branch from somewhere else (e.g., `develop`)?
+3. Any branch naming conventions I should follow?
+```
+
+### Create Feature Branch (if confirmed)
+
+```bash
+# Create and checkout feature branch
+git checkout -b feature/zenml-quick-wins
+
+# Or with their naming convention
+git checkout -b <their-preferred-name>
+```
+
+### Why This Matters
+
+- Prevents accidental commits to protected branches
+- Allows easy rollback if something goes wrong
+- Follows standard development workflow practices
+- Makes it easier to review changes before merging
+
+---
+
+## Phase 6: Implementation
 
 See [quick-wins-catalog.md](quick-wins-catalog.md) for detailed implementation guides for each quick win.
 
@@ -148,7 +342,7 @@ For each quick win, follow this pattern:
 
 ---
 
-## Phase 4: Verification
+## Phase 7: Verification
 
 After implementing, verify with:
 
