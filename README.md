@@ -2,6 +2,8 @@
 
 Modular AI coding agent skills for ZenML workflows. Add the marketplace to your AI coding tool and install skills that guide you through implementing ZenML features.
 
+<img width="991" height="973" alt="CleanShot 2026-01-26 at 10 47 01" src="https://github.com/user-attachments/assets/a6e54013-3033-41fd-abfa-e29d7b324e32" />
+
 ## Supported Tools
 
 | Tool | Installation |
@@ -21,7 +23,6 @@ Modular AI coding agent skills for ZenML workflows. Add the marketplace to your 
 ## Coming Soon
 
 - **Pipeline creation** — Scaffold new pipelines from templates
-- **Stack setup** — Guided stack component configuration
 - **Debugging** — Investigate pipeline failures and performance issues
 - **Migration** — Migrate from other MLOps platforms to ZenML
 
