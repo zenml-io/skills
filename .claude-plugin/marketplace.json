@@ -14,7 +14,7 @@
   "plugins": [
     {
       "name": "zenml-quick-wins",
-      "source": "./.claude/skills/zenml-quick-wins",
+      "source": "./skills/zenml-quick-wins",
       "description": "Guided implementation of ZenML MLOps best practices including metadata logging, experiment tracking, alerters, scheduling, secrets management, and Model Control Plane setup",
       "version": "1.0.0",
       "author": {
