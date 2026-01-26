@@ -61,12 +61,12 @@ Spawn **both subagents in parallel** using a single Task tool call with multiple
 ```
 Use the Task tool to launch BOTH agents simultaneously:
 
-1. zenml-stack-investigator agent:
+1. zenml-quick-wins:zenml-stack-investigator agent:
    - Prompt: "Investigate the ZenML stack configuration for this project.
      Run all the ZenML CLI commands to understand stacks, components,
      and recent pipeline activity. Return a structured summary."
 
-2. zenml-codebase-analyzer agent:
+2. zenml-quick-wins:zenml-codebase-analyzer agent:
    - Prompt: "Analyze the Python codebase for ZenML patterns and quick win
      opportunities. Search for pipeline definitions, current feature usage,
      and areas for improvement. Return a structured summary."
@@ -76,13 +76,13 @@ Both agents run concurrently and return structured summaries. Synthesize their f
 
 ### What the Subagents Investigate
 
-**zenml-stack-investigator** (Bash-focused, Haiku model):
+**zenml-quick-wins:zenml-stack-investigator** (Bash-focused, Haiku model):
 - Runs `zenml status`, `zenml stack list`, `zenml stack describe`
 - Checks for experiment trackers, alerters, secrets, code repos, models
 - Fetches recent pipeline runs
 - Returns: Stack configuration, component status, pipeline activity summary
 
-**zenml-codebase-analyzer** (Read-only, Haiku model):
+**zenml-quick-wins:zenml-codebase-analyzer** (Read-only, Haiku model):
 - Searches for `@pipeline`, `@step` decorators
 - Checks for `log_metadata`, `tags=`, `Model(`, `HTMLString`, `Schedule`
 - Flags hardcoded credentials (security concern)
@@ -376,6 +376,35 @@ git checkout -b <their-preferred-name>
 - Allows easy rollback if something goes wrong
 - Follows standard development workflow practices
 - Makes it easier to review changes before merging
+
+### Implementation Approach ⏸️
+
+Before starting implementation, use `AskUserQuestion` to ask about the preferred approach:
+
+```markdown
+## 📝 How would you like to proceed with implementation?
+
+**Option A: Write a plan first (Recommended)**
+I can write a detailed implementation plan as a `.md` file that you can:
+- Review and share with your team before changes are made
+- Use as documentation of what will be implemented
+- Reference during code review
+
+After the plan is approved, I'd recommend compacting this session to start fresh with clean context for implementation.
+
+**Option B: Proceed directly to implementation**
+I'll start implementing the selected quick wins right away.
+
+**Questions:**
+1. Would you like a written plan first, or shall we proceed directly?
+2. If writing a plan: where should I save it? (e.g., `docs/zenml-quick-wins-plan.md`)
+```
+
+**Why offer this choice:**
+- Teams often want to review proposed changes before implementation
+- A written plan serves as documentation and can be referenced in PRs
+- Compacting the session before implementation clears investigation context, keeping the model focused on the task at hand
+- Some users prefer to move fast; others prefer deliberate planning
 
 ---
 
