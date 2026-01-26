@@ -44,7 +44,7 @@ Run these commands to understand the current ZenML setup:
 # Core stack info
 zenml status
 zenml stack list --output=json
-zenml stack describe --output=json
+zenml stack describe
 
 # Component details
 zenml experiment-tracker list 2>/dev/null || echo "No experiment trackers"
@@ -54,7 +54,7 @@ zenml code-repository list 2>/dev/null || echo "No code repos connected"
 zenml model list 2>/dev/null || echo "No models registered"
 
 # Recent runs (check for metadata usage)
-zenml pipeline runs list --size=5 --output=json 2>/dev/null
+zenml pipeline runs list --size=10 --output=json 2>/dev/null
 ```
 
 ### Codebase Analysis
