@@ -39,12 +39,6 @@ $skill-installer install the zenml skills from github.com/zenml-io/skills
 
 [Cursor skills docs](https://cursor.com/docs/context/skills#installing-skills-from-github)
 
-### Other Tools
-
-| Tool | Status |
-|------|--------|
-| [GitHub Copilot](https://github.com/features/copilot) | Agent Skills integration |
-| [Gemini CLI](https://github.com/google/gemini-cli) | Skills support |
 
 ## Available Skills
 
