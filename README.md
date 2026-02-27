@@ -4,28 +4,45 @@ Modular AI coding agent skills for ZenML workflows. Add the marketplace to your 
 
 <img width="991" height="973" alt="Screenshot of the quick wins skill in action inside Claude Code" src="https://github.com/user-attachments/assets/a6e54013-3033-41fd-abfa-e29d7b324e32" />
 
-## Quick Start (Claude Code)
+## Quick Start
+
+### Claude Code
 
 ```bash
-# Step 1: Add the ZenML skills marketplace
+# Add the ZenML skills marketplace
 /plugin marketplace add zenml-io/skills
 
-# Step 2: Example: Install the quick-wins skill
+# Install a skill (e.g. quick-wins)
 /plugin install zenml-quick-wins@zenml
 
-# Step 3: Use it! Navigate to your ZenML project and run:
+# Use it — navigate to your ZenML project and run:
 /zenml-quick-wins
 ```
 
-That's it! The skill will analyze your ZenML setup and guide you through implementing high-impact improvements.
+[Plugin docs](https://code.claude.com/docs/en/plugins) · [Marketplace docs](https://code.claude.com/docs/en/plugin-marketplaces)
 
-## Supported Tools
+### OpenAI Codex CLI
 
-| Tool | Add Marketplace |
-|------|-----------------|
-| [Claude Code](https://code.claude.com/) | `/plugin marketplace add zenml-io/skills` |
-| [OpenAI Codex CLI](https://github.com/openai/codex) | `codex plugin add zenml-io/skills` |
-| [Cursor](https://cursor.sh) | Via settings configuration |
+Ask the built-in skill installer to fetch skills from this repo:
+
+```
+$skill-installer install the zenml skills from github.com/zenml-io/skills
+```
+
+[Codex skills docs](https://developers.openai.com/codex/skills#install-skills)
+
+### Cursor
+
+1. Open **Cursor Settings** (`Cmd+Shift+J` / `Ctrl+Shift+J`)
+2. Navigate to **Rules** → **Project Rules** → **Add Rule**
+3. Choose **Remote Rule (GitHub)** and enter `https://github.com/zenml-io/skills`
+
+[Cursor skills docs](https://cursor.com/docs/context/skills#installing-skills-from-github)
+
+### Other Tools
+
+| Tool | Status |
+|------|--------|
 | [GitHub Copilot](https://github.com/features/copilot) | Agent Skills integration |
 | [Gemini CLI](https://github.com/google/gemini-cli) | Skills support |
 
