@@ -18,9 +18,9 @@ There is no build pipeline or runtime service in this repo. Use validation and i
 - `git status`: verify only intended files are staged/modified.
 
 ## Coding Style & Naming Conventions
-- Use clear, instructional Markdown in `SKILL.md` files with frontmatter:
-  - `name`: kebab-case identifier.
-  - `description`: concise purpose plus “Use when …” guidance.
+- Use clear, instructional Markdown in `SKILL.md` files with frontmatter.
+- Set `name` to a kebab-case identifier.
+- Write `description` as concise purpose plus “Use when …” guidance.
 - Keep plugin and skill folder names kebab-case (for example `zenml-pipeline-authoring`).
 - Follow existing JSON style: 2-space indentation, double-quoted keys/strings.
 - Prefer concrete, actionable steps over abstract guidance.
