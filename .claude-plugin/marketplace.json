@@ -33,6 +33,51 @@
         "experiment-tracking",
         "model-governance"
       ]
+    },
+    {
+      "name": "zenml-scoping",
+      "source": "./skills/zenml-scoping",
+      "description": "Scope and decompose ML workflow ideas into realistic ZenML pipeline architectures through an in-depth interview process",
+      "version": "1.0.0",
+      "author": {
+        "name": "ZenML Team",
+        "url": "https://github.com/zenml-io"
+      },
+      "homepage": "https://docs.zenml.io",
+      "repository": "https://github.com/zenml-io/skills",
+      "license": "Apache-2.0",
+      "category": "mlops",
+      "keywords": [
+        "zenml",
+        "mlops",
+        "pipelines",
+        "architecture",
+        "scoping",
+        "decomposition"
+      ]
+    },
+    {
+      "name": "zenml-pipeline-authoring",
+      "source": "./skills/zenml-pipeline-authoring",
+      "description": "Author ZenML pipelines with steps, artifacts, Docker settings, materializers, metadata logging, secrets management, YAML configuration, and custom visualizations",
+      "version": "1.0.0",
+      "author": {
+        "name": "ZenML Team",
+        "url": "https://github.com/zenml-io"
+      },
+      "homepage": "https://docs.zenml.io",
+      "repository": "https://github.com/zenml-io/skills",
+      "license": "Apache-2.0",
+      "category": "mlops",
+      "keywords": [
+        "zenml",
+        "mlops",
+        "pipelines",
+        "steps",
+        "docker",
+        "materializers",
+        "authoring"
+      ]
     }
   ]
 }

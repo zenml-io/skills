@@ -34,10 +34,11 @@ That's it! The skill will analyze your ZenML setup and guide you through impleme
 | Skill | Description | Install |
 |-------|-------------|---------|
 | `zenml-quick-wins` | Analyze your setup, recommend high-impact improvements, and implement features like metadata logging, experiment tracking, alerts, and model governance | `/plugin install zenml-quick-wins@zenml` |
+| `zenml-scoping` | Scope and decompose ML workflow ideas into realistic ZenML pipeline architectures through a structured interview process | `/plugin install zenml-scoping@zenml` |
+| `zenml-pipeline-authoring` | Author ZenML pipelines with steps, artifacts, Docker settings, materializers, metadata, secrets, YAML config, and visualizations | `/plugin install zenml-pipeline-authoring@zenml` |
 
 ## Coming Soon
 
-- **Pipeline creation** — Scaffold new pipelines from templates
 - **Debugging** — Investigate pipeline failures and performance issues
 - **Migration** — Migrate from other MLOps platforms to ZenML
 

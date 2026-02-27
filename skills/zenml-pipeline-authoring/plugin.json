@@ -1,0 +1,23 @@
+{
+  "name": "zenml-pipeline-authoring",
+  "version": "1.0.0",
+  "description": "Author ZenML pipelines with steps, artifacts, Docker settings, materializers, metadata logging, secrets management, YAML configuration, and custom visualizations",
+  "author": {
+    "name": "ZenML Team",
+    "email": "hello@zenml.io",
+    "url": "https://github.com/zenml-io"
+  },
+  "homepage": "https://docs.zenml.io",
+  "repository": "https://github.com/zenml-io/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "zenml",
+    "mlops",
+    "pipelines",
+    "steps",
+    "docker",
+    "materializers",
+    "authoring"
+  ],
+  "skills": "./skills/"
+}
