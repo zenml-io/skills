@@ -118,3 +118,8 @@ Anthropic has great documentation and if you're doing something that relates to 
 - Full skills documentation: https://code.claude.com/docs/en/skills
 - Custom subagents docs: https://code.claude.com/docs/en/sub-agents
 - Plugin marketplaces: https://code.claude.com/docs/en/plugin-marketplaces
+
+## Development Notes & Working with this repository
+
+IMPORTANT: **Before opening a PR or making a large commit**, always run `/simplify` to review changed code for reuse opportunities, quality issues, and efficiency improvements. Fix any issues it finds before committing.
+
