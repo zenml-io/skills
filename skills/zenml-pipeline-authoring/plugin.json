@@ -1,6 +1,6 @@
 {
   "name": "zenml-pipeline-authoring",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Author ZenML pipelines with steps, artifacts, Docker settings, materializers, metadata logging, secrets management, YAML configuration, and custom visualizations",
   "author": {
     "name": "ZenML Team",

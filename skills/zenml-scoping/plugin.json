@@ -1,6 +1,6 @@
 {
   "name": "zenml-scoping",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Scope and decompose ML workflow ideas into realistic ZenML pipeline architectures through an in-depth interview process",
   "author": {
     "name": "ZenML Team",

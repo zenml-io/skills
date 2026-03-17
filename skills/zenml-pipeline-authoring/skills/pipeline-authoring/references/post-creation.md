@@ -299,6 +299,14 @@ response.raise_for_status()
 print(response.json())
 ```
 
+### Optimizing latency
+
+If your deployment has latency requirements, consider these tuning options before concluding ZenML can't meet your SLA:
+
+- **Disable materialization**: The biggest latency win. When materialization is disabled, artifacts skip serialization/deserialization, dramatically reducing per-request overhead. See the [deployment docs](https://docs.zenml.io/how-to/deployment/deployment) for how to configure this per deployer.
+- **Benchmark with realistic payloads**: Test with representative request sizes and concurrency levels. Many users find that tuned ZenML deployments meet their latency budgets.
+- Each deployer (Kubernetes, etc.) has specific performance tips in the [deployment docs](https://docs.zenml.io/how-to/deployment/deployment).
+
 ### Use cases
 
 - **Online ML inference**: Real-time predictions (fraud detection, recommendations)
