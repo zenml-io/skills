@@ -34,6 +34,13 @@ No automated test framework is configured here. Treat structure validation as re
 3. Confirm plugin registration in `.claude-plugin/marketplace.json`.
 4. Manually preview changed Markdown for heading and code fence rendering.
 
+## Plugin-Specific Notes
+
+### zenml-airflow-migration
+- The skill uses three reference files (`references/concept-map.md`, `references/code-patterns.md`, `references/gaps-and-flags.md`) for progressive disclosure — SKILL.md stays focused on the workflow, references are loaded on demand.
+- Post-migration, the skill chains to `zenml-quick-wins` and optionally `zenml-pipeline-authoring` for further enhancement.
+- The migration report template includes a "What You Get for Free" section and community Slack support for complex migrations with many unsupported patterns.
+
 ## Commit & Pull Request Guidelines
 Recent commits use short, imperative subjects (for example: `Add zenml-scoping...`, `Fix plugin agent format...`).
 

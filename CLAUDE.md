@@ -47,6 +47,15 @@ skills/
           materializers.md
           post-creation.md
           yaml-config.md
+  zenml-airflow-migration/
+    plugin.json
+    skills/
+      airflow-migration/
+        SKILL.md
+        references/
+          concept-map.md
+          code-patterns.md
+          gaps-and-flags.md
 ```
 
 ### Key Files
