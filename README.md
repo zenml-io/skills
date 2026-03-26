@@ -48,6 +48,7 @@ $skill-installer install the zenml skills from github.com/zenml-io/skills
 | `zenml-scoping` | Scope and decompose ML workflow ideas into realistic ZenML pipeline architectures through a structured interview process | `/plugin install zenml-scoping@zenml` |
 | `zenml-pipeline-authoring` | Author ZenML pipelines with steps, artifacts, Docker settings, materializers, metadata, secrets, YAML config, and visualizations | `/plugin install zenml-pipeline-authoring@zenml` |
 | `zenml-airflow-migration` | Migrate Apache Airflow DAGs to idiomatic ZenML pipelines with concept mapping, code translation, severity-classified flagging, and redesign suggestions | `/plugin install zenml-airflow-migration@zenml` |
+| `zenml-databricks-migration` | Migrate Databricks Workflows (Lakeflow Jobs) to idiomatic ZenML pipelines with notebook refactoring, concept mapping, code translation, and unsupported pattern flagging | `/plugin install zenml-databricks-migration@zenml` |
 
 ## Coming Soon
 

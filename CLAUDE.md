@@ -14,6 +14,7 @@ This is the **ZenML Skills Marketplace** — a collection of modular AI coding a
 | `zenml-scoping` | Scope and decompose ML workflow ideas into realistic ZenML pipeline architectures via an interview process |
 | `zenml-pipeline-authoring` | Author ZenML pipelines with steps, artifacts, Docker settings, materializers, YAML config, and more |
 | `zenml-airflow-migration` | Migrate Apache Airflow DAGs to idiomatic ZenML pipelines with concept mapping, code translation, and unsupported pattern flagging |
+| `zenml-databricks-migration` | Migrate Databricks Workflows (Lakeflow Jobs) to idiomatic ZenML pipelines with notebook refactoring, concept mapping, code translation, and unsupported pattern flagging |
 
 ## Architecture
 
@@ -51,6 +52,15 @@ skills/
     plugin.json
     skills/
       airflow-migration/
+        SKILL.md
+        references/
+          concept-map.md
+          code-patterns.md
+          gaps-and-flags.md
+  zenml-databricks-migration/
+    plugin.json
+    skills/
+      databricks-migration/
         SKILL.md
         references/
           concept-map.md

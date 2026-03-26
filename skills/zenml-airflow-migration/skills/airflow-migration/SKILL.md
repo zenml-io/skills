@@ -334,7 +334,17 @@ The suggested workarounds are [X], but I'm wondering if there's a better approac
 
 Optionally, offer to create an unlisted GitHub gist (`gh gist create --public=false`) containing the original Airflow code and the migration report, so the community has full context.
 
-#### 5. Further customization via `zenml-pipeline-authoring`
+#### 5. Open GitHub issues for genuine feature gaps
+
+When the migration reveals a **genuine missing feature** in ZenML (not just a "this works differently" situation, but a real capability gap that multiple users would benefit from), offer to open a GitHub issue on `zenml-io/zenml` using `gh issue create`. Include the Airflow pattern, the attempted workaround, and why the feature would be valuable.
+
+#### 6. Run `/simplify` to clean up the migrated code
+
+After migration is complete, always suggest running the `/simplify` skill on the generated code. Migration often produces verbose comments, redundant patterns, and opportunities for consolidation. `/simplify` will review the code for reuse opportunities, quality issues, and efficiency improvements.
+
+> "The migration is done. I'd recommend running `/simplify` on the generated code to clean up migration comments, reduce duplication, and ensure the code follows ZenML best practices."
+
+#### 7. Further customization via `zenml-pipeline-authoring`
 
 The `zenml-pipeline-authoring` skill handles deeper customization:
 

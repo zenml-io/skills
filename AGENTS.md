@@ -40,6 +40,14 @@ No automated test framework is configured here. Treat structure validation as re
 - The skill uses three reference files (`references/concept-map.md`, `references/code-patterns.md`, `references/gaps-and-flags.md`) for progressive disclosure — SKILL.md stays focused on the workflow, references are loaded on demand.
 - Post-migration, the skill chains to `zenml-quick-wins` and optionally `zenml-pipeline-authoring` for further enhancement.
 - The migration report template includes a "What You Get for Free" section and community Slack support for complex migrations with many unsupported patterns.
+- Post-migration, the skill suggests running `/simplify` to clean up migration comments and reduce duplication, and offers to open GitHub issues on `zenml-io/zenml` for genuine feature gaps.
+
+### zenml-databricks-migration
+- Same three-reference-file architecture as the airflow-migration skill (`references/concept-map.md`, `references/code-patterns.md`, `references/gaps-and-flags.md`).
+- Handles Databricks-specific challenges: notebook refactoring (classifying notebooks by risk level based on magics, dbutils usage, Spark state), heterogeneous task types (notebook, wheel, SQL, dbt, condition, for_each, run_job), and platform-coupled features (Unity Catalog, DBFS, managed identity).
+- The `gaps-and-flags.md` reference includes a notebook classification guide (auto-refactorable / semi-automatic / manual refactor) that the main SKILL.md references during Phase 1 analysis.
+- Post-migration, chains to `zenml-quick-wins`, suggests `/simplify`, and offers GitHub issue creation for genuine feature gaps.
+- Migration report includes a "Notebook Refactoring Summary" section unique to this skill.
 
 ## Commit & Pull Request Guidelines
 Recent commits use short, imperative subjects (for example: `Add zenml-scoping...`, `Fix plugin agent format...`).
