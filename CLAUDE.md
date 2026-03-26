@@ -13,6 +13,7 @@ This is the **ZenML Skills Marketplace** — a collection of modular AI coding a
 | `zenml-quick-wins` | Guided implementation of ZenML MLOps best practices (metadata, experiment tracking, alerters, scheduling, secrets, Model Control Plane) |
 | `zenml-scoping` | Scope and decompose ML workflow ideas into realistic ZenML pipeline architectures via an interview process |
 | `zenml-pipeline-authoring` | Author ZenML pipelines with steps, artifacts, Docker settings, materializers, YAML config, and more |
+| `zenml-airflow-migration` | Migrate Apache Airflow DAGs to idiomatic ZenML pipelines with concept mapping, code translation, and unsupported pattern flagging |
 
 ## Architecture
 

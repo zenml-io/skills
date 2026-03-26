@@ -78,6 +78,29 @@
         "materializers",
         "authoring"
       ]
+    },
+    {
+      "name": "zenml-airflow-migration",
+      "source": "./skills/zenml-airflow-migration",
+      "description": "Migrate Apache Airflow DAGs and workflows to idiomatic ZenML pipelines with concept mapping, code translation, and unsupported pattern flagging",
+      "version": "1.0.0",
+      "author": {
+        "name": "ZenML Team",
+        "url": "https://github.com/zenml-io"
+      },
+      "homepage": "https://docs.zenml.io",
+      "repository": "https://github.com/zenml-io/skills",
+      "license": "Apache-2.0",
+      "category": "mlops",
+      "keywords": [
+        "zenml",
+        "airflow",
+        "migration",
+        "mlops",
+        "pipelines",
+        "orchestration",
+        "dag"
+      ]
     }
   ]
 }
