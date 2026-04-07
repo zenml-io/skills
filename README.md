@@ -48,7 +48,16 @@ $skill-installer install the zenml skills from github.com/zenml-io/skills
 | `zenml-scoping` | Scope and decompose ML workflow ideas into realistic ZenML pipeline architectures through a structured interview process | `/plugin install zenml-scoping@zenml` |
 | `zenml-pipeline-authoring` | Author ZenML pipelines with steps, artifacts, Docker settings, materializers, metadata, secrets, YAML config, and visualizations | `/plugin install zenml-pipeline-authoring@zenml` |
 | `zenml-airflow-migration` | Migrate Apache Airflow DAGs to idiomatic ZenML pipelines with concept mapping, code translation, severity-classified flagging, and redesign suggestions | `/plugin install zenml-airflow-migration@zenml` |
+| `zenml-argo-migration` | Migrate Argo Workflows to idiomatic ZenML pipelines with concept mapping, code translation, Kubernetes-native pattern flagging, and redesign guidance | `/plugin install zenml-argo-migration@zenml` |
 | `zenml-databricks-migration` | Migrate Databricks Workflows (Lakeflow Jobs) to idiomatic ZenML pipelines with notebook refactoring, concept mapping, code translation, and unsupported pattern flagging | `/plugin install zenml-databricks-migration@zenml` |
+| `zenml-prefect-migration` | Migrate Prefect flows and workflows to idiomatic ZenML pipelines with concept mapping, dynamic-execution analysis, code translation, and unsupported pattern flagging | `/plugin install zenml-prefect-migration@zenml` |
+| `zenml-vertexai-migration` | Migrate Vertex AI Pipelines (KFP v2 / PipelineJob workflows) to idiomatic ZenML pipelines with concept mapping, artifact-contract translation, GCPC rewrite guidance, and unsupported pattern flagging | `/plugin install zenml-vertexai-migration@zenml` |
+| `zenml-azureml-migration` | Migrate Azure Machine Learning SDK v2 pipelines to idiomatic ZenML pipelines with concept mapping, Azure-aware compute translation, code patterns, and unsupported pattern flagging | `/plugin install zenml-azureml-migration@zenml` |
+| `zenml-dagster-migration` | Migrate Dagster assets, ops, jobs, and asset-graph workflows to idiomatic ZenML pipelines with concept mapping, pipeline-boundary planning, code translation, and unsupported pattern flagging | `/plugin install zenml-dagster-migration@zenml` |
+| `zenml-flyte-migration` | Migrate Flyte workflows, tasks, and LaunchPlans to idiomatic ZenML pipelines with concept mapping, special-type planning, code translation, and unsupported pattern flagging | `/plugin install zenml-flyte-migration@zenml` |
+| `zenml-kedro-migration` | Migrate Kedro pipelines and projects to idiomatic ZenML pipelines with Data Catalog to artifact translation, concept mapping, code translation, and unsupported pattern flagging | `/plugin install zenml-kedro-migration@zenml` |
+| `zenml-metaflow-migration` | Migrate Metaflow flows to idiomatic ZenML pipelines with FlowSpec mapping, artifact translation, control-flow redesign notes, and unsupported pattern flagging | `/plugin install zenml-metaflow-migration@zenml` |
+| `zenml-sagemaker-migration` | Migrate Amazon SageMaker Pipelines to idiomatic ZenML pipelines with concept mapping, artifact-model rewrites, runtime-setting translation, and unsupported pattern flagging | `/plugin install zenml-sagemaker-migration@zenml` |
 
 ## Coming Soon
 
