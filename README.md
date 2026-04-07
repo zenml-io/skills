@@ -42,11 +42,27 @@ $skill-installer install the zenml skills from github.com/zenml-io/skills
 
 ## Available Skills
 
+### Core Skills
+
 | Skill | Description | Install |
 |-------|-------------|---------|
 | `zenml-quick-wins` | Analyze your setup, recommend high-impact improvements, and implement features like metadata logging, experiment tracking, alerts, and model governance | `/plugin install zenml-quick-wins@zenml` |
 | `zenml-scoping` | Scope and decompose ML workflow ideas into realistic ZenML pipeline architectures through a structured interview process | `/plugin install zenml-scoping@zenml` |
 | `zenml-pipeline-authoring` | Author ZenML pipelines with steps, artifacts, Docker settings, materializers, metadata, secrets, YAML config, and visualizations | `/plugin install zenml-pipeline-authoring@zenml` |
+
+### Migration Skills
+
+These skills are best used when you already have real source material from another workflow system — code, YAML, JSON job specs, pipeline definitions, or project config — and you want help translating it into **idiomatic ZenML** rather than doing a superficial syntax swap.
+
+A few important caveats:
+
+- They classify source concepts as **direct**, **approximate**, or **unsupported** rather than pretending every platform feature has a safe 1:1 ZenML equivalent.
+- They are most helpful when you can provide the actual workflow code/config, not just a vague description.
+- Some migrations will be **partial by design**: the skill may generate working ZenML code for the cleanly mappable parts and a migration report for the pieces that need redesign.
+- After a migration, the best follow-up is usually `zenml-quick-wins` for production improvements and `zenml-pipeline-authoring` for deeper customization.
+
+| Skill | Description | Install |
+|-------|-------------|---------|
 | `zenml-airflow-migration` | Migrate Apache Airflow DAGs to idiomatic ZenML pipelines with concept mapping, code translation, severity-classified flagging, and redesign suggestions | `/plugin install zenml-airflow-migration@zenml` |
 | `zenml-argo-migration` | Migrate Argo Workflows to idiomatic ZenML pipelines with concept mapping, code translation, Kubernetes-native pattern flagging, and redesign guidance | `/plugin install zenml-argo-migration@zenml` |
 | `zenml-databricks-migration` | Migrate Databricks Workflows (Lakeflow Jobs) to idiomatic ZenML pipelines with notebook refactoring, concept mapping, code translation, and unsupported pattern flagging | `/plugin install zenml-databricks-migration@zenml` |
