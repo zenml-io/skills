@@ -14,7 +14,16 @@ This is the **ZenML Skills Marketplace** — a collection of modular AI coding a
 | `zenml-scoping` | Scope and decompose ML workflow ideas into realistic ZenML pipeline architectures via an interview process |
 | `zenml-pipeline-authoring` | Author ZenML pipelines with steps, artifacts, Docker settings, materializers, YAML config, and more |
 | `zenml-airflow-migration` | Migrate Apache Airflow DAGs to idiomatic ZenML pipelines with concept mapping, code translation, and unsupported pattern flagging |
+| `zenml-argo-migration` | Migrate Argo Workflows to idiomatic ZenML pipelines with concept mapping, code translation, Kubernetes-native pattern flagging, and redesign guidance |
 | `zenml-databricks-migration` | Migrate Databricks Workflows (Lakeflow Jobs) to idiomatic ZenML pipelines with notebook refactoring, concept mapping, code translation, and unsupported pattern flagging |
+| `zenml-prefect-migration` | Migrate Prefect flows and workflows to idiomatic ZenML pipelines with concept mapping, dynamic-execution analysis, code translation, and unsupported pattern flagging |
+| `zenml-azureml-migration` | Migrate Azure Machine Learning SDK v2 pipelines to idiomatic ZenML pipelines with concept mapping, Azure-aware compute translation, code patterns, and unsupported pattern flagging |
+| `zenml-dagster-migration` | Migrate Dagster assets, ops, jobs, and asset-graph workflows to idiomatic ZenML pipelines with concept mapping, pipeline-boundary planning, code translation, and unsupported pattern flagging |
+| `zenml-flyte-migration` | Migrate Flyte workflows, tasks, and LaunchPlans to idiomatic ZenML pipelines with concept mapping, special-type planning, code translation, and unsupported pattern flagging |
+| `zenml-kedro-migration` | Migrate Kedro pipelines and projects to idiomatic ZenML pipelines with Data Catalog to artifact translation, concept mapping, code translation, and unsupported pattern flagging |
+| `zenml-metaflow-migration` | Migrate Metaflow flows to idiomatic ZenML pipelines with FlowSpec mapping, artifact translation, control-flow redesign notes, and unsupported pattern flagging |
+| `zenml-sagemaker-migration` | Migrate Amazon SageMaker Pipelines to idiomatic ZenML pipelines with concept mapping, artifact-model rewrites, runtime-setting translation, and unsupported pattern flagging |
+| `zenml-vertexai-migration` | Migrate Vertex AI Pipelines (KFP v2 / PipelineJob workflows) to idiomatic ZenML pipelines with concept mapping, artifact-contract translation, GCPC rewrite guidance, and unsupported pattern flagging |
 
 ## Architecture
 
@@ -57,10 +66,91 @@ skills/
           concept-map.md
           code-patterns.md
           gaps-and-flags.md
+  zenml-argo-migration/
+    plugin.json
+    skills/
+      argo-migration/
+        SKILL.md
+        references/
+          concept-map.md
+          code-patterns.md
+          gaps-and-flags.md
   zenml-databricks-migration/
     plugin.json
     skills/
       databricks-migration/
+        SKILL.md
+        references/
+          concept-map.md
+          code-patterns.md
+          gaps-and-flags.md
+  zenml-prefect-migration/
+    plugin.json
+    skills/
+      prefect-migration/
+        SKILL.md
+        references/
+          concept-map.md
+          code-patterns.md
+          gaps-and-flags.md
+  zenml-vertexai-migration/
+    plugin.json
+    skills/
+      vertexai-migration/
+        SKILL.md
+        references/
+          concept-map.md
+          code-patterns.md
+          gaps-and-flags.md
+  zenml-azureml-migration/
+    plugin.json
+    skills/
+      azureml-migration/
+        SKILL.md
+        references/
+          concept-map.md
+          code-patterns.md
+          gaps-and-flags.md
+  zenml-dagster-migration/
+    plugin.json
+    skills/
+      dagster-migration/
+        SKILL.md
+        references/
+          concept-map.md
+          code-patterns.md
+          gaps-and-flags.md
+  zenml-flyte-migration/
+    plugin.json
+    skills/
+      flyte-migration/
+        SKILL.md
+        references/
+          concept-map.md
+          code-patterns.md
+          gaps-and-flags.md
+  zenml-kedro-migration/
+    plugin.json
+    skills/
+      kedro-migration/
+        SKILL.md
+        references/
+          concept-map.md
+          code-patterns.md
+          gaps-and-flags.md
+  zenml-metaflow-migration/
+    plugin.json
+    skills/
+      metaflow-migration/
+        SKILL.md
+        references/
+          concept-map.md
+          code-patterns.md
+          gaps-and-flags.md
+  zenml-sagemaker-migration/
+    plugin.json
+    skills/
+      sagemaker-migration/
         SKILL.md
         references/
           concept-map.md
@@ -142,4 +232,3 @@ Anthropic has great documentation and if you're doing something that relates to 
 ## Development Notes & Working with this repository
 
 IMPORTANT: **Before opening a PR or making a large commit**, always run `/simplify` to review changed code for reuse opportunities, quality issues, and efficiency improvements. Fix any issues it finds before committing.
-
