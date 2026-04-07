@@ -1,0 +1,23 @@
+{
+  "name": "zenml-kedro-migration",
+  "version": "1.0.0",
+  "description": "Migrate Kedro pipelines and projects to idiomatic ZenML pipelines with concept mapping, Data Catalog to artifact translation, code translation, and unsupported pattern flagging",
+  "author": {
+    "name": "ZenML Team",
+    "email": "hello@zenml.io",
+    "url": "https://github.com/zenml-io"
+  },
+  "homepage": "https://docs.zenml.io",
+  "repository": "https://github.com/zenml-io/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "zenml",
+    "kedro",
+    "migration",
+    "mlops",
+    "pipelines",
+    "catalog",
+    "artifacts"
+  ],
+  "skills": "./skills/"
+}
