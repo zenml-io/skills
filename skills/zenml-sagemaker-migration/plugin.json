@@ -1,0 +1,23 @@
+{
+  "name": "zenml-sagemaker-migration",
+  "version": "1.0.0",
+  "description": "Migrate Amazon SageMaker Pipelines and workflow code to idiomatic ZenML pipelines with concept mapping, code translation, and unsupported pattern flagging",
+  "author": {
+    "name": "ZenML Team",
+    "email": "hello@zenml.io",
+    "url": "https://github.com/zenml-io"
+  },
+  "homepage": "https://docs.zenml.io",
+  "repository": "https://github.com/zenml-io/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "zenml",
+    "sagemaker",
+    "migration",
+    "mlops",
+    "pipelines",
+    "orchestration",
+    "aws"
+  ],
+  "skills": "./skills/"
+}

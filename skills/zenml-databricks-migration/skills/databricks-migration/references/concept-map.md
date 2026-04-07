@@ -56,17 +56,23 @@ Complete mapping of Databricks Workflows (Lakeflow Jobs) concepts to their ZenML
 
 Not all ZenML orchestrators support scheduling. Check this before migrating scheduled jobs:
 
-| Orchestrator | Scheduling | Types Supported |
-|---|:---:|---|
-| Kubernetes | Yes | Cron |
-| Vertex AI | Yes | Cron |
-| SageMaker | Yes | Cron, Interval, One-time |
-| AzureML | Yes | Cron, Interval |
-| Airflow (as ZenML orchestrator) | Yes | Cron, Interval |
-| Kubeflow | Yes | Cron, Interval |
-| Databricks | Yes | Cron only |
-| Local / LocalDocker | No | -- |
-| SkyPilot | No | -- |
+| Orchestrator | Scheduling Support | Supported Schedule Types | Native Schedule Management |
+|---|:---:|---|:---:|
+| AirflowOrchestrator | ✅ | Cron, Interval | ⛔️ |
+| AzureMLOrchestrator | ✅ | Cron, Interval | ⛔️ |
+| DatabricksOrchestrator | ✅ | Cron only | ⛔️ |
+| HyperAIOrchestrator | ✅ | Cron, One-time | ⛔️ |
+| KubeflowOrchestrator | ✅ | Cron, Interval | ⛔️ |
+| KubernetesOrchestrator | ✅ | Cron only | ✅ |
+| LocalOrchestrator | ⛔️ | N/A | N/A |
+| LocalDockerOrchestrator | ⛔️ | N/A | N/A |
+| SagemakerOrchestrator | ✅ | Cron, Interval, One-time | ⛔️ |
+| SkypilotAWSOrchestrator | ⛔️ | N/A | N/A |
+| SkypilotAzureOrchestrator | ⛔️ | N/A | N/A |
+| SkypilotGCPOrchestrator | ⛔️ | N/A | N/A |
+| SkypilotLambdaOrchestrator | ⛔️ | N/A | N/A |
+| TektonOrchestrator | ⛔️ | N/A | N/A |
+| VertexOrchestrator | ✅ | Cron only | ⛔️ |
 
 ## Data Passing and Parameters
 

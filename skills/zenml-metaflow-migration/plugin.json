@@ -1,0 +1,24 @@
+{
+  "name": "zenml-metaflow-migration",
+  "version": "1.0.0",
+  "description": "Migrate Metaflow flows to idiomatic ZenML pipelines with FlowSpec mapping, artifact translation, and unsupported pattern flagging",
+  "author": {
+    "name": "ZenML Team",
+    "email": "hello@zenml.io",
+    "url": "https://github.com/zenml-io"
+  },
+  "homepage": "https://docs.zenml.io",
+  "repository": "https://github.com/zenml-io/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "zenml",
+    "metaflow",
+    "migration",
+    "mlops",
+    "pipelines",
+    "flows",
+    "flowspec",
+    "outerbounds"
+  ],
+  "skills": "./skills/"
+}

@@ -1,0 +1,24 @@
+{
+  "name": "zenml-argo-migration",
+  "version": "1.0.0",
+  "description": "Migrate Argo Workflows to idiomatic ZenML pipelines with concept mapping, code translation, Kubernetes-native pattern flagging, and redesign guidance",
+  "author": {
+    "name": "ZenML Team",
+    "email": "hello@zenml.io",
+    "url": "https://github.com/zenml-io"
+  },
+  "homepage": "https://docs.zenml.io",
+  "repository": "https://github.com/zenml-io/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "zenml",
+    "argo",
+    "argo-workflows",
+    "migration",
+    "mlops",
+    "pipelines",
+    "orchestration",
+    "kubernetes"
+  ],
+  "skills": "./skills/"
+}
