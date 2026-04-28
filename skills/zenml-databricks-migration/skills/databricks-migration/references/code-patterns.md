@@ -15,6 +15,10 @@ Side-by-side Databricks Workflows -> ZenML translations for all major patterns. 
 - [File Arrival Trigger](#file-arrival-trigger)
 - [Notebooks with Spark and Widgets](#notebooks-with-spark-and-widgets)
 - [Secrets and Connections](#secrets-and-connections)
+- [YAML Configuration and Small CLI](#yaml-configuration-and-small-cli)
+- [Databricks Feature Engineering / Unity Catalog Feature Lookup](#databricks-feature-engineering--unity-catalog-feature-lookup)
+- [External Wheel and Workspace Dependencies](#external-wheel-and-workspace-dependencies)
+- [Caching-Sensitive Steps](#caching-sensitive-steps)
 
 ---
 
@@ -472,8 +476,8 @@ def mixed_task_types(epochs: int = 3, run_id: str = "UNKNOWN") -> None:
 ```
 
 **Key differences**:
-- Three different Databricks parameter channels (widgets, wheel args, SQL substitution) are replaced with one coherent Python parameter model.
-- `python_wheel_task` libraries become `DockerSettings(requirements=[...])`.
+- Three different Databricks parameter channels (widgets, wheel args, SQL substitution) are replaced with one coherent Python parameter model, with business values supplied from ZenML YAML configs rather than a long CLI.
+- `python_wheel_task` libraries become `DockerSettings(requirements=[...])`, `pyproject.toml` dependencies, or a private package artifact strategy when the original wheel is on DBFS/workspace storage.
 - `sql_task` becomes explicit client code with credentials from ZenML secrets, not managed identity.
 - `{{job.run_id}}` becomes a pipeline parameter (or use `get_step_context().pipeline_run.id` inside the step).
 
@@ -921,3 +925,89 @@ def secrets_example() -> None:
 - `dbutils.secrets.get(scope, key)` -> `Client().get_secret(name).secret_values[key]`
 - Databricks secret scopes map to ZenML secret names. Keys map 1:1.
 - ZenML secrets can also be injected as environment variables using `DockerSettings(environment={"API_TOKEN": "{{my-scope.api-token}}"})`.
+
+---
+
+## YAML Configuration and Small CLI
+
+Databricks job JSON often mixes DAG structure, business parameters, schedules, and per-task settings. In ZenML, keep Python focused on the DAG and use populated YAML configs for the knobs.
+
+### Recommended pattern
+
+```text
+configs/dev.yaml   -> development table names, dates, resources, secrets refs
+configs/prod.yaml  -> production table names, schedules, resource sizes
+run.py             -> chooses --config and optional operational flags only
+```
+
+### Migration rule
+
+- Move job parameters, widget defaults, table names, feature table names, hyperparameters, and environment-specific settings into `configs/dev.yaml` and `configs/prod.yaml`.
+- Keep `argparse` small: `--config`, `--no-cache`, `--dry-run`, or similar operational switches.
+- Avoid creating one CLI argument per Databricks parameter; that recreates a fragile job UI instead of using ZenML's config system.
+
+---
+
+## Databricks Feature Engineering / Unity Catalog Feature Lookup
+
+Do not treat Feature Engineering Client or Unity Catalog feature lookup code as ordinary SQL unless the user explicitly accepts that semantic change.
+
+### Databricks pattern
+
+```python
+from databricks.feature_engineering import FeatureEngineeringClient, FeatureLookup
+
+fe = FeatureEngineeringClient()
+training_set = fe.create_training_set(
+    df=labels_df,
+    feature_lookups=[
+        FeatureLookup(
+            table_name="catalog.schema.customer_features",
+            lookup_key="customer_id",
+            timestamp_lookup_key="event_ts",
+        )
+    ],
+    label="churned",
+)
+training_df = training_set.load_df()
+```
+
+### Migration guidance
+
+- If the target execution stack remains Databricks, preserve this as Databricks-native feature access inside a ZenML step and make credentials/dependencies explicit.
+- If moving away from Databricks, flag for design review before rewriting. Preserve the contract: lookup keys, timestamp keys, point-in-time correctness, online/offline behavior, table ownership, and Unity Catalog permissions.
+- Only use a Databricks SQL connector when the feature read is truly a simple table read and point-in-time feature semantics are not required.
+
+---
+
+## External Wheel and Workspace Dependencies
+
+Databricks can install wheels from DBFS/workspace paths that the ZenML container builder cannot see.
+
+### Databricks job fragment
+
+```json
+{
+  "python_wheel_task": {"package_name": "acme_model", "entry_point": "train"},
+  "libraries": [{"whl": "dbfs:/FileStore/wheels/acme_model-0.1.0-py3-none-any.whl"}]
+}
+```
+
+### Migration guidance
+
+- If source is available, make it an importable Python package and call the underlying function from the ZenML step.
+- If the wheel is external and versioned, publish it to a private package index or make it available as a Docker build artifact/direct URL.
+- If it exists only in DBFS/workspace and cannot be resolved, mark it as a blocker with the exact path. Do not emit a vague dependency TODO.
+
+---
+
+## Caching-Sensitive Steps
+
+ZenML caching can skip steps whose declared inputs and code have not changed. Disable caching or document the decision when a migrated task depends on hidden inputs.
+
+Cache-sensitive examples:
+- `{{job.run_id}}`, `{{job.start_time.*}}`, `datetime.now()`, random seeds, or latest-partition logic
+- reads from mutable Delta/Unity Catalog tables, feature tables, APIs, or cloud prefixes without an explicit version/partition/timestamp input
+- writes, model registration, feature publishing, metric logging, notifications, and audit side effects
+
+Migration rule: make the hidden value an explicit parameter if it should affect caching; otherwise set caching off for the side-effecting step.

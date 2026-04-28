@@ -63,9 +63,10 @@ Read everything thoroughly before doing anything else. For each job, identify:
 5. **Notebook analysis** -- For each `notebook_task`: does it use `dbutils.widgets`, `%sql`, `%pip`, `%run`, `display()`, Spark temp views, DBFS paths? (See the notebook classification guide in [references/gaps-and-flags.md](references/gaps-and-flags.md))
 6. **Scheduling/triggers** -- Cron schedules? Periodic triggers? File arrival triggers? Continuous mode?
 7. **Error handling** -- `max_retries`, `min_retry_interval_millis`, `timeout_seconds`, `retry_on_timeout`?
-8. **Compute** -- Job clusters, existing clusters, serverless? Per-task library installs?
-9. **Parameters** -- Job-level parameters with `{{job.parameters.*}}` references? Widget-based parameter passing?
+8. **Compute and libraries** -- Job clusters, existing clusters, serverless? Per-task `libraries[]` entries (`whl`, `pypi`, `maven`, `jar`, `requirements`), workspace files, or DBFS-hosted wheels?
+9. **Parameters and config** -- Job-level parameters with `{{job.parameters.*}}` references? Widget-based parameter passing? Which values are business parameters vs environment-specific settings?
 10. **Access control** -- Job ACLs, Run-as identity, secret scopes?
+11. **Feature engineering / Unity Catalog** -- Databricks Feature Engineering Client, Feature Store / Feature Engineering APIs, Unity Catalog feature tables, point-in-time joins, or feature lookup specs?
 
 ### Phase 2: Classify and Plan
 
@@ -88,12 +89,13 @@ For each component identified in Phase 1, classify it using the mapping type (di
 - `condition_task` → conditional pipeline logic (parameter-based for static pipelines, `@pipeline(dynamic=True)` + `.load()` for runtime values)
 - `for_each_task` → `@pipeline(dynamic=True)` + `.map()` (concurrency is orchestrator-dependent)
 - `run_job_task` → pipeline composition or API-triggered pipeline run
-- Job parameters (`{{job.parameters.*}}`) → typed Python pipeline parameters
-- Widget parameters (`dbutils.widgets.get()`) → step function parameters
+- Job parameters (`{{job.parameters.*}}`) → typed Python pipeline parameters populated from ZenML YAML configs
+- Widget parameters (`dbutils.widgets.get()`) → step function parameters, with values supplied from pipeline config whenever they are business/configuration values
 - Cron scheduling → `Schedule(cron_expression=...)` (orchestrator-dependent)
 - Job clusters / compute → `ResourceSettings` + orchestrator/step operator configuration
 - `dbutils.secrets.get()` → ZenML secrets store
-- Per-task libraries → `DockerSettings(requirements=[...])`
+- Per-task libraries → `DockerSettings(requirements=[...])`, `pyproject.toml`, or a private package/index strategy for workspace/DBFS wheel dependencies
+- Databricks Feature Engineering Client / Unity Catalog feature lookups → Databricks-native feature access pattern or explicit redesign; do not blindly rewrite point-in-time feature lookup logic as ordinary SQL
 
 **Absent / needs redesign (flag for human review):**
 - `run_if` with `ALL_DONE`, `AT_LEAST_ONE_FAILED`, etc. (ZenML has pipeline-level execution modes but not per-step `run_if`)
@@ -145,12 +147,18 @@ migrated_pipeline/
 This matches the `zenml-pipeline-authoring` skill's conventions. Key rules:
 - One step per file in `steps/`
 - Separate pipeline definition from execution
-- `run.py` uses `argparse` (click conflicts with ZenML)
+- `run.py` uses `argparse` only for config selection and operational flags (for example `--config`, `--no-cache`, `--dry-run`), not as the main business-parameter surface
 - `pyproject.toml` with `zenml>=0.94.1` and `requires-python = ">=3.12"`
-- Always generate `configs/dev.yaml` AND `configs/prod.yaml` (minimum two configs)
+- Always generate populated `configs/dev.yaml` AND `configs/prod.yaml` (minimum two configs) containing business parameters plus step/pipeline/orchestrator settings discovered during migration
 - Always generate a `README.md` explaining the migrated pipeline, how to run it, and what requires manual attention
 - Include a brief ASCII DAG diagram in the pipeline file's module docstring showing the step dependency graph
 - Run `zenml init` at project root
+
+#### Configuration and CLI conventions
+
+Prefer ZenML YAML configs as the migrated pipeline's main control surface. Put business parameters (dates, table names, feature table names, model hyperparameters), step settings, Docker settings, resource settings, schedules, and orchestrator-specific settings into `configs/dev.yaml` and `configs/prod.yaml`. The `run.py` entry point should mostly select which config to use and set operational flags; it should not recreate the Databricks job parameter system with a long `argparse` list.
+
+A good mental model: Databricks job JSON held both the DAG and its knobs; in ZenML, Python should define the DAG, while YAML should hold the knobs that change between environments or runs.
 
 #### Translation patterns
 
@@ -214,6 +222,26 @@ my_pipeline.with_options(schedule=schedule)()
 
 Not all orchestrators support scheduling. Check [references/concept-map.md](references/concept-map.md) for the orchestrator support table.
 
+#### Handling Databricks Feature Engineering and Unity Catalog feature lookup
+
+Treat Feature Engineering Client / Unity Catalog feature lookup code as Databricks-native unless you have a verified equivalent in the target architecture. Point-in-time feature joins, feature table metadata, online/offline lookup behavior, and UC governance are semantic contracts, not just SQL snippets.
+
+Rules:
+1. If the target stack remains Databricks, prefer preserving the Databricks feature access pattern inside a step with explicit dependencies and credentials.
+2. If the target stack is not Databricks, flag the pattern for design review and document what must be preserved: feature table names, lookup keys, timestamps, point-in-time correctness, online/offline store behavior, and permissions.
+3. Only rewrite to a SQL connector when the feature lookup is genuinely just a simple table read and the user accepts the loss/change of Feature Engineering Client semantics.
+4. Include the decision in `MIGRATION_REPORT.md`; do not hide this behind a generic "replace with SQL" TODO.
+
+#### Handling external wheel and workspace dependencies
+
+Databricks jobs can depend on libraries that are not visible in normal Python package metadata: `libraries[].whl` on DBFS/workspace paths, uploaded workspace files, Maven coordinates, cluster-installed libraries, or `%pip install` cells. Inventory these before generating code.
+
+Rules:
+1. If the wheel's source is in the repo, convert it into an importable package and list it in `pyproject.toml` / Docker settings.
+2. If the wheel is external but versioned, depend on it via a private package index, direct URL, or build artifact that the target container builder can access.
+3. If the wheel only exists in DBFS/workspace and cannot be resolved, flag it as a migration blocker with the exact package/path and required owner action.
+4. Do not leave a vague `TODO: install dependencies`; record the concrete dependency strategy in config, Docker settings, README, and the migration report.
+
 #### Handling notebook tasks
 
 Notebook tasks are the most common source of migration complexity. Follow this decision process:
@@ -225,9 +253,11 @@ Notebook tasks are the most common source of migration complexity. Follow this d
 
 See the notebook classification guide in [references/gaps-and-flags.md](references/gaps-and-flags.md).
 
-#### Code comment style
+#### Code comment and TODO style
 
-Keep migration-related comments concise and actionable. Use `# Migration note:` for brief inline caveats (1-2 lines) and `# TODO(migration):` for items requiring user action. Avoid lengthy paragraphs in code comments -- put detailed explanations in the migration report instead. The code should read as close to production-ready as possible; once the user has addressed the TODOs, the remaining comments should be minimal.
+Keep migration-related comments concise and actionable. Use `# Migration note:` for brief inline caveats (1-2 lines) and `# TODO(migration):` only for items requiring user action because the source workflow has a genuine semantic gap, missing dependency, missing credential, or unresolved infrastructure decision.
+
+Before leaving a TODO, ask: "Can I safely resolve this from the provided Databricks job/notebook code?" If yes, implement the migrated version instead of emitting a TODO. Avoid TODOs for routine refactors such as widget-to-parameter conversion, taskValues-to-artifact wiring, known SQL text, known wheel entry points, or known table names. Put longer explanations in the migration report, not in code. The generated code should read as close to production-ready as possible.
 
 #### Handling approximate translations
 
@@ -262,6 +292,18 @@ For patterns that have no ZenML equivalent, do NOT silently approximate them. In
 def cleanup_step(upstream_status: str) -> None:
     ...
 ```
+
+#### Caching safety
+
+ZenML step caching is useful, but migrations must be conservative. Disable caching or explicitly warn when a Databricks task depends on values that are not captured as step inputs.
+
+Flag these as cache-sensitive:
+- Databricks `{{job.run_id}}`, `{{job.start_time.*}}`, current timestamps, random seeds, or "latest partition" logic
+- reads from mutable external state (Delta/UC tables, feature tables, APIs, cloud object prefixes) without a version/partition input
+- writes, notifications, metric/experiment logging, feature publishing, model registration, or other side effects
+- steps whose only purpose is observability or audit logging
+
+If a step has side effects, set caching off for that step or document why caching is safe. If a read step should be cacheable, make the data version explicit as a parameter (for example partition date, table version, commit hash, or feature snapshot timestamp).
 
 ### Phase 4: Produce the Migration Report
 
@@ -305,11 +347,29 @@ After generating the ZenML project, produce a `MIGRATION_REPORT.md` in the proje
 - **Migrated**: `Schedule(cron_expression='0 2 * * *')` -- requires orchestrator with scheduling support
 - **Note**: Quartz 6-field cron converted to standard 5-field (seconds field dropped)
 
-## Compute Mapping
-| Databricks Cluster | ZenML Equivalent | Notes |
+## Compute and Dependency Mapping
+| Databricks Cluster / Dependency | ZenML Equivalent | Notes |
 |---|---|---|
 | cpu_cluster (i3.xlarge, 2 workers) | ResourceSettings(cpu_count=2, memory="8Gi") | Spark cluster lifecycle differs |
 | gpu_cluster (g5.2xlarge) | ResourceSettings(gpu_count=1, memory="16Gi") | GPU scheduling is orchestrator-dependent |
+| dbfs:/FileStore/wheels/acme_model.whl | Private package index / Docker build artifact | Must be accessible to remote container builds |
+
+## Configuration Mapping
+| Source setting | ZenML location | Notes |
+|---|---|---|
+| job parameter `run_date` | `configs/dev.yaml` / `configs/prod.yaml` | `run.py` selects config; YAML carries business values |
+| per-task resources | step settings in YAML or decorators | Prefer YAML for environment-specific settings |
+
+## Feature Engineering / Unity Catalog Review
+| Source pattern | Migration decision | Point-in-time / governance notes |
+|---|---|---|
+| [Feature lookup / table] | [Preserved Databricks-native / redesigned / simple SQL accepted] | [Keys, timestamps, permissions, semantic caveats] |
+
+## Caching Decisions
+| Step | Cache setting | Reason |
+|---|---|---|
+| publish_metrics | disabled | Side-effect logging should not be skipped |
+| read_features | review required | Reads mutable external feature table unless snapshot timestamp is explicit |
 
 ## Limitations and Key Differences
 [Summarize the most important behavioral differences the user should be aware of. Put this BEFORE the "What You Get for Free" section so the user sees caveats before benefits.]
@@ -401,6 +461,10 @@ The `zenml-pipeline-authoring` skill handles deeper customization:
 
 These are the most common sources of confusion after migration. Always mention the relevant ones in the migration report.
 
+### YAML config, not giant CLIs
+
+Databricks job parameters, widget defaults, and per-task settings should become populated ZenML YAML configs plus typed pipeline/step parameters. Keep `run.py` small: it selects `configs/dev.yaml` or `configs/prod.yaml` and handles operational flags. If you put every business value into `argparse`, you recreate the least maintainable part of a large Databricks job instead of using ZenML's configuration model.
+
 ### Task values != Artifacts
 
 Databricks task values (`dbutils.jobs.taskValues`) are small JSON blobs (48KiB limit) used as a control channel between tasks. ZenML artifacts are first-class persisted objects stored in the artifact store. This changes:
@@ -425,6 +489,10 @@ Databricks uses `{{...}}` string substitution for dynamic references -- syntax e
 
 Databricks has first-class triggers for cron, file arrival, table update, and continuous jobs. ZenML delegates scheduling to the orchestrator -- not all orchestrators support it. File arrival triggers and continuous jobs have no ZenML OSS equivalent and require external eventing infrastructure.
 
+### Caching changes behavior if inputs are hidden
+
+Databricks reruns tasks by default. ZenML can skip a step when code and declared inputs look unchanged. That is powerful, but unsafe if the Databricks task depended on hidden inputs such as job/run ID, wall-clock time, "latest" external tables, mutable APIs, or side-effect logging. Make those inputs explicit or disable caching for the step.
+
 ## Anti-Patterns in Migration
 
 | Anti-pattern | Why it's wrong | What to do instead |
@@ -438,6 +506,10 @@ Databricks has first-class triggers for cron, file arrival, table update, and co
 | Translating `for_each_task` to a Python for loop | Loses per-item parallelism and observability | Use dynamic pipelines with `.map()` |
 | Assuming shared cluster state | ZenML steps are isolated containers | Pass all data through artifacts, not shared memory |
 | Keeping Databricks-specific auth (managed tokens) | Won't work outside Databricks | Use ZenML secrets + service connectors |
+| Rewriting Feature Engineering Client / UC point-in-time lookups as plain SQL by default | Can silently break point-in-time correctness, online/offline behavior, and governance semantics | Preserve Databricks-native feature access when staying on Databricks, or flag for design review before rewriting |
+| Putting all migrated job parameters into `argparse` | Recreates a fragile command-line surface and bypasses ZenML config | Put business parameters and settings in populated YAML configs; keep argparse for config selection and operational flags |
+| Leaving broad `TODO(migration)` comments for known source logic | Produces TODO-heavy code even when the migration was mechanically safe | Resolve safe conversions; reserve TODOs for genuine semantic gaps, missing dependencies, credentials, or infra choices |
+| Enabling caching on steps with hidden mutable inputs or side effects | Runs may skip necessary reads/writes/logging | Make versions/timestamps explicit inputs or disable caching for those steps |
 
 ## References
 
