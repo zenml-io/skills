@@ -589,7 +589,7 @@ from zenml import pipeline, step
 from zenml.config import ResourceSettings
 
 
-@step(settings={"resources": ResourceSettings(cpu_count=2, memory="8Gi")})
+@step(settings={"resources": ResourceSettings(cpu_count=2, memory="8GiB")})
 def feature_eng() -> str:
     """Migration note: Databricks ran this on cpu_cluster (i3.xlarge, 2 workers).
     ResourceSettings captures resource intent; actual enforcement depends on
@@ -598,7 +598,7 @@ def feature_eng() -> str:
     return "features_ready"
 
 
-@step(settings={"resources": ResourceSettings(cpu_count=4, gpu_count=1, memory="16Gi")})
+@step(settings={"resources": ResourceSettings(cpu_count=4, gpu_count=1, memory="16GiB")})
 def train(features_ready: str) -> None:
     """Migration note: Databricks ran this on gpu_cluster (g5.2xlarge).
     GPU scheduling is orchestrator-dependent. Verify the target stack

@@ -350,8 +350,8 @@ After generating the ZenML project, produce a `MIGRATION_REPORT.md` in the proje
 ## Compute and Dependency Mapping
 | Databricks Cluster / Dependency | ZenML Equivalent | Notes |
 |---|---|---|
-| cpu_cluster (i3.xlarge, 2 workers) | ResourceSettings(cpu_count=2, memory="8Gi") | Spark cluster lifecycle differs |
-| gpu_cluster (g5.2xlarge) | ResourceSettings(gpu_count=1, memory="16Gi") | GPU scheduling is orchestrator-dependent |
+| cpu_cluster (i3.xlarge, 2 workers) | ResourceSettings(cpu_count=2, memory="8GiB") | Spark cluster lifecycle differs |
+| gpu_cluster (g5.2xlarge) | ResourceSettings(gpu_count=1, memory="16GiB") | GPU scheduling is orchestrator-dependent |
 | dbfs:/FileStore/wheels/acme_model.whl | Private package index / Docker build artifact | Must be accessible to remote container builds |
 
 ## Configuration Mapping

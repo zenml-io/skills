@@ -13,7 +13,7 @@ Remote orchestrators only get code and files that ZenML can package into the exe
 - In remote Docker settings, point ZenML at the project metadata with `pyproject_path="pyproject.toml"` when needed.
 - If your project must be importable as a package inside the image, set `local_project_install_command`. If using `uv` inside the Docker image, target the container Python environment explicitly, for example `"uv pip install --system -e ."` or `"uv pip install --system -e '.[train]'"`, assuming `uv` is available in the image. Otherwise use `"pip install -e ."`.
 - Do not depend on files that are only present on your laptop. Include templates, SQL files, tokenizer files, and small static assets as package data or load them from the artifact store / object storage.
-- If using a private package or wheel, publish a Linux-compatible wheel to a package index or include the wheel explicitly in the Docker build context. A wheel built on macOS, especially Apple Silicon, is usually not valid for Linux Kubernetes pods.
+- If using a private package or wheel, publish a Linux-compatible wheel to a package index or direct URL, or use a custom `dockerfile` plus `build_context_root` so the Docker build can copy/install that wheel. A wheel built on macOS, especially Apple Silicon, is usually not valid for Linux Kubernetes pods.
 
 ### Minimal pyproject package-discovery pattern
 
@@ -57,7 +57,7 @@ Apple Silicon machines are ARM64. Many Kubernetes clusters are AMD64 Linux. The 
 
 - Is the failing pod running on `linux/amd64` while development happened on `darwin/arm64`?
 - Does the failing dependency have a wheel for the target Python version and platform?
-- Did a local path dependency or wheel sneak into `requirements`, `pyproject.toml`, or the Docker build context?
+- Did a local path dependency or wheel sneak into `requirements`/`pyproject.toml`, or require a custom `dockerfile` + `build_context_root` to be copied into the image?
 - Are you using a base image that supports the cluster architecture?
 
 ## Kubernetes orchestrator troubleshooting
@@ -134,3 +134,4 @@ Keep the approval payload small and explicit: candidate model name/version, key 
 - Log the metrics and report URI that justified promotion.
 - Use model versions/stages rather than overwriting a generic `latest` artifact.
 - Prefer a separate deployment pipeline that consumes the approved model version.
+- For CI/CD stage promotion, use `force=False` by default and handle occupied-stage errors; use `force=True` only when approval explicitly accepts archiving/replacing the currently staged model version.
