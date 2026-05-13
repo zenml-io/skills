@@ -7,6 +7,8 @@ This reference covers the patterns that are most dangerous to silently approxima
 - [Must-Flag Patterns](#must-flag-patterns)
 - [Notebook Classification Guide](#notebook-classification-guide)
 - [Behavioral Differences](#behavioral-differences)
+- [Caching-Sensitive Patterns](#caching-sensitive-patterns)
+- [TODO Discipline](#todo-discipline)
 - [Migration Decision Tree](#migration-decision-tree)
 - [ZenML Features with No Databricks Equivalent](#zenml-features-with-no-databricks-equivalent)
 
@@ -106,6 +108,28 @@ These patterns must **never** be silently approximated. Flag them in the migrati
 - Use ZenML service connectors for cloud authentication
 - Configure dbt profiles with explicit connection details
 
+### Feature Engineering Client / Unity Catalog feature lookups
+
+**What Databricks does**: Feature Engineering Client and Unity Catalog feature lookup APIs preserve feature table metadata, lookup keys, timestamp keys, point-in-time joins, and governance rules.
+
+**Why it matters**: Rewriting this code as a plain SQL connector can silently change training data. The dangerous failure mode is not a crash; it is a model trained on subtly wrong feature values because point-in-time correctness or online/offline semantics were lost.
+
+**Redesign approaches**:
+- If execution remains on Databricks, preserve Databricks-native feature access inside a ZenML step and make dependencies/credentials explicit.
+- If execution moves off Databricks, require a feature-store design decision before code generation.
+- Only rewrite as SQL when it is truly a simple table read and the user accepts the semantic change.
+
+### External wheel / workspace dependencies
+
+**What Databricks does**: Jobs can install `libraries[]` from DBFS/workspace wheel paths, Maven coordinates, uploaded files, or cluster libraries. Notebooks can also install packages with `%pip`.
+
+**Why it matters**: A remote ZenML container build cannot import a wheel that only exists on a Databricks cluster or DBFS path unless that artifact is made available to the build.
+
+**Redesign approaches**:
+- Package source code as an importable Python package when available.
+- Publish external wheels to a private package index or accessible artifact URL.
+- Flag unresolved workspace/DBFS wheels as blockers with exact paths and owner action.
+
 ---
 
 ## Notebook Classification Guide
@@ -202,6 +226,28 @@ Based on detected patterns, classify each notebook into one of:
 
 ---
 
+## Caching-Sensitive Patterns
+
+ZenML caching is a behavioral change from Databricks reruns. It is safe only when all values that affect the step are represented in code, parameters, artifacts, or settings.
+
+Flag or disable caching when a step uses:
+- Databricks run metadata (`{{job.run_id}}`, `{{job.start_time.*}}`) or wall-clock timestamps
+- random seeds not passed as explicit parameters
+- mutable external reads such as "latest" Delta/Unity Catalog tables, feature tables, APIs, or object-store prefixes
+- side effects such as writes, notifications, MLflow/metric logging, feature publishing, model registration, or audit logging
+
+Migration rule: either make the changing value explicit (partition date, table version, commit hash, feature snapshot timestamp) or turn caching off for that step and document the reason in the migration report.
+
+## TODO Discipline
+
+Use TODOs as safety markers, not as placeholders for ordinary migration work.
+
+- Resolve safe conversions immediately: widgets -> parameters, task values -> artifacts, known SQL text -> explicit query function, known wheel entry point -> imported callable.
+- Leave `TODO(migration)` only for genuine gaps: missing dependency artifact, missing credential, unresolved feature-store semantics, unsupported `run_if`, event trigger redesign, or infrastructure choice.
+- Every remaining TODO should have a matching migration report row with suggested owner action.
+
+---
+
 ## Migration Decision Tree
 
 Text-based decision procedure for translating Databricks tasks to ZenML steps.
@@ -222,8 +268,11 @@ TASK TYPE MAPPING:
       EMIT @step with widget params -> function params, taskValues -> return values
 
   ELSE IF task_type IN {"spark_python_task", "python_wheel_task"}:
-    IF entrypoint is importable Python function:
-      EMIT @step calling that function with DockerSettings for dependencies
+    INVENTORY libraries[] and workspace/DBFS wheel paths
+    IF entrypoint is importable Python function AND dependencies are resolvable:
+      EMIT @step calling that function with DockerSettings/pyproject dependencies
+    ELSE IF wheel exists only in DBFS/workspace and no accessible artifact/source is provided:
+      FLAG blocker UNRESOLVED_WHEEL_DEPENDENCY
     ELSE:
       EMIT @step that runs the entry point in a container
       FLAG warn ENTRY_POINT_WRAPPED
@@ -267,11 +316,21 @@ CONTROL FLOW:
       RECOMMEND: on_failure hooks on upstream steps
     FLAG blocker RUN_IF_REQUIRES_REDESIGN
 
-DATA PASSING:
+DATA PASSING AND CONFIG:
   IF task uses dbutils.jobs.taskValues or {{tasks.*.values.*}}:
     MAP to typed artifacts (step return values -> step input parameters)
   IF task uses {{job.parameters.*}} or dbutils.widgets:
     MAP to pipeline/step function parameters with explicit types
+    PUT business values and environment-specific settings into populated YAML configs
+    KEEP argparse limited to config selection and operational flags
+
+FEATURE ENGINEERING:
+  IF code uses FeatureEngineeringClient, FeatureLookup, UC feature tables, or point-in-time joins:
+    IF target stack remains Databricks:
+      PRESERVE Databricks-native feature access inside a ZenML step
+    ELSE:
+      FLAG blocker FEATURE_STORE_SEMANTICS_REQUIRES_DESIGN
+      DOCUMENT lookup keys, timestamp keys, feature tables, online/offline behavior, and permissions
 
 COMPUTE:
   IF task references job_cluster_key or existing_cluster_id:
@@ -280,6 +339,11 @@ COMPUTE:
     ELSE:
       Translate to ResourceSettings + step operator settings
       FLAG warn COMPUTE_SEMANTICS_CHANGED
+
+CACHING:
+  IF step uses run/job IDs, timestamps, latest external state, random values, or side effects:
+    DISABLE caching or require explicit version/timestamp/partition inputs
+    DOCUMENT cache decision in migration report
 
 RETRIES/TIMEOUTS:
   IF max_retries > 0:

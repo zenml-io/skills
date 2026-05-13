@@ -136,6 +136,7 @@ Key rules:
 - **Always use `pyproject.toml`** for dependency declarations. Do NOT create `requirements.txt` alongside it — use one or the other, and `pyproject.toml` is the right choice.
 - **`run.py` uses `argparse`** (not `click`) — click can conflict with ZenML's own click dependency.
 - **Run `zenml init`** at the project root to set the source root explicitly — this prevents import failures when code runs inside containers.
+- For `uv`/`pyproject.toml` package discovery, package data, and remote wheel inclusion pitfalls, see [references/runtime-portability-and-approvals.md](references/runtime-portability-and-approvals.md#uv-pyproject-and-package-discovery).
 
 ### pyproject.toml template
 
@@ -408,7 +409,7 @@ Apply different settings per step with `@step(settings={"docker": DockerSettings
 
 Key fields: `requirements` (pip packages), `required_integrations` (ZenML integrations), `apt_packages` (system packages), `environment` (build-time env vars), `runtime_environment` (runtime env vars), `parent_image` (custom base image), `python_package_installer` (`"uv"` default or `"pip"`), `prevent_build_reuse` (force fresh builds for debugging).
 
-See [references/docker-settings.md](references/docker-settings.md) for the full field catalog and YAML equivalents.
+See [references/docker-settings.md](references/docker-settings.md) for the full field catalog and YAML equivalents. For Apple Silicon/ARM development targeting AMD64 Linux/Kubernetes, remote package inclusion, and Kubernetes pod troubleshooting, see [references/runtime-portability-and-approvals.md](references/runtime-portability-and-approvals.md#apple-silicon-development-targeting-amd64-linuxkubernetes) and [the Kubernetes troubleshooting section](references/runtime-portability-and-approvals.md#kubernetes-orchestrator-troubleshooting).
 
 ---
 
@@ -568,7 +569,7 @@ Always add tags to pipelines and key artifacts — they make filtering and organ
 
 ### Model Control Plane
 
-Track the pipeline's artifacts under a named model for versioning, promotion, and cross-pipeline artifact sharing. Use `@pipeline(model=Model(name="my_model", tags=["classification"]))`. This enables model promotion (`staging` → `production`) and artifact exchange between training and inference pipelines. See [references/post-creation.md](references/post-creation.md#model-control-plane) for full patterns.
+Track the pipeline's artifacts under a named model for versioning, promotion, and cross-pipeline artifact sharing. Use `@pipeline(model=Model(name="my_model", tags=["classification"]))`. This enables model promotion (`staging` → `production`) and artifact exchange between training and inference pipelines. See [references/post-creation.md](references/post-creation.md#model-control-plane) for full patterns. For human approval gates before promotion, see [references/runtime-portability-and-approvals.md](references/runtime-portability-and-approvals.md#human-approval-and-model-promotion).
 
 ### Scheduling
 
@@ -606,6 +607,9 @@ See [references/post-creation.md](references/post-creation.md) for detailed patt
 | Stack registration instructions in README | Users have different stacks; instructions become stale | Just say "assumes a configured ZenML stack" and link to docs |
 | Using `dataclass` for step outputs | No built-in materializer, requires custom code | Use Pydantic `BaseModel` — has built-in materializer |
 | No minimum ZenML version in deps | Breaks on older versions missing features | Pin `zenml>=0.93` (or `>=0.91` minimum for dynamic) |
+| macOS/ARM wheel or local path dependency used in remote image | Works on Apple Silicon, fails in AMD64 Linux/Kubernetes | Publish Linux-compatible wheels or install from package index/build context |
+| Kubernetes pod rejected before Python starts | `Forbidden`, `Pending`, `ImagePullBackOff`, or admission policy errors | Inspect pod events with `kubectl describe pod` and fix policy/resources/image access |
+| Automatic production promotion hidden inside training code | Hard-to-audit releases | Use explicit CI/CD approval gates or a documented approval checkpoint before promotion |
 
 ---
 
@@ -619,6 +623,7 @@ See [references/post-creation.md](references/post-creation.md) for detailed patt
 - [references/materializers.md](references/materializers.md) — Materializer authoring guide
 - [references/yaml-config.md](references/yaml-config.md) — Complete YAML config schema
 - [references/post-creation.md](references/post-creation.md) — Tags, Model Control Plane, scheduling, deployment
+- [references/runtime-portability-and-approvals.md](references/runtime-portability-and-approvals.md) — uv/package discovery, Apple Silicon → AMD64 builds, Kubernetes troubleshooting, approval gates
 
 ### ZenML documentation
 
