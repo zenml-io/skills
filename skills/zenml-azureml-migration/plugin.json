@@ -1,6 +1,6 @@
 {
   "name": "zenml-azureml-migration",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Migrate Azure Machine Learning SDK v2 pipelines to idiomatic ZenML pipelines with concept mapping, Azure-aware compute translation, code patterns, and unsupported pattern flagging",
   "author": {
     "name": "ZenML Team",

@@ -61,7 +61,7 @@ Read everything thoroughly before doing anything else. For each job, identify:
 3. **Data flow** -- Where are `dbutils.jobs.taskValues` used? Are dynamic references (`{{tasks.<task>.values.<key>}}`) used in parameters?
 4. **Control flow** -- Any `condition_task` nodes? `for_each_task` iteration? `run_if` settings beyond `ALL_SUCCESS`?
 5. **Notebook analysis** -- For each `notebook_task`: does it use `dbutils.widgets`, `%sql`, `%pip`, `%run`, `display()`, Spark temp views, DBFS paths? (See the notebook classification guide in [references/gaps-and-flags.md](references/gaps-and-flags.md))
-6. **Scheduling/triggers** -- Cron schedules? Periodic triggers? File arrival triggers? Continuous mode?
+6. **Scheduling/triggers** -- Cron schedules? Periodic triggers? File arrival triggers? Table update triggers? Continuous mode? If cron is present, record both the Quartz expression and the Databricks timezone.
 7. **Error handling** -- `max_retries`, `min_retry_interval_millis`, `timeout_seconds`, `retry_on_timeout`?
 8. **Compute and libraries** -- Job clusters, existing clusters, serverless? Per-task `libraries[]` entries (`whl`, `pypi`, `maven`, `jar`, `requirements`), workspace files, or DBFS-hosted wheels?
 9. **Parameters and config** -- Job-level parameters with `{{job.parameters.*}}` references? Widget-based parameter passing? Which values are business parameters vs environment-specific settings?
@@ -91,16 +91,16 @@ For each component identified in Phase 1, classify it using the mapping type (di
 - `run_job_task` → pipeline composition or API-triggered pipeline run
 - Job parameters (`{{job.parameters.*}}`) → typed Python pipeline parameters populated from ZenML YAML configs
 - Widget parameters (`dbutils.widgets.get()`) → step function parameters, with values supplied from pipeline config whenever they are business/configuration values
-- Cron scheduling → `Schedule(cron_expression=...)` (orchestrator-dependent)
-- Job clusters / compute → `ResourceSettings` + orchestrator/step operator configuration
+- Cron scheduling → `Schedule(cron_expression=...)` (orchestrator-dependent; Databricks orchestrator supports cron only and requires `DatabricksOrchestratorSettings(schedule_timezone="<IANA timezone>")`, e.g. `UTC`, `America/New_York`, or `America/Los_Angeles`)
+- Job clusters / compute → Databricks-specific orchestrator or step-operator settings (`DatabricksOrchestratorSettings` / `DatabricksStepOperatorSettings`); generic `ResourceSettings` captures intent for many orchestrators but does **not** size Databricks step-operator clusters
 - `dbutils.secrets.get()` → ZenML secrets store
 - Per-task libraries → `DockerSettings(requirements=[...])`, `pyproject.toml`, or a private package/index strategy for workspace/DBFS wheel dependencies
 - Databricks Feature Engineering Client / Unity Catalog feature lookups → Databricks-native feature access pattern or explicit redesign; do not blindly rewrite point-in-time feature lookup logic as ordinary SQL
 
 **Absent / needs redesign (flag for human review):**
 - `run_if` with `ALL_DONE`, `AT_LEAST_ONE_FAILED`, etc. (ZenML has pipeline-level execution modes but not per-step `run_if`)
-- File arrival triggers (Unity Catalog integration, no ZenML OSS equivalent)
-- Continuous jobs (always-on streaming, not a ZenML pipeline pattern)
+- File arrival/table update triggers (Unity Catalog integration; no ZenML OSS equivalent, and current ZenML Pro platform-event triggers react to ZenML platform events rather than Databricks file/table events)
+- Continuous jobs (always-on/restarting streaming workloads, not a run-to-completion ZenML pipeline pattern)
 - Notebooks relying on `%run`, `%pip`, `%sql` magics, DBFS mounts, or shared Spark temp views across tasks
 - Shared cluster state (cached tables, driver-local files, warm Spark context reused across tasks)
 - DBFS-specific filesystem paths passed between tasks
@@ -209,18 +209,37 @@ from zenml.hooks import alerter_failure_hook, alerter_success_hook
 def my_step() -> None: ...
 ```
 
-**Scheduling**: Map cron schedules to `Schedule`:
+**Scheduling**: Map cron schedules to `Schedule`, and preserve the timezone separately when the target stack uses the Databricks orchestrator:
 
 ```python
 from zenml.config.schedule import Schedule
+from zenml.integrations.databricks.flavors.databricks_orchestrator_flavor import (
+    DatabricksOrchestratorSettings,
+)
 
-# Databricks: quartz_cron_expression "0 0 2 * * ?" (Quartz 6-field)
-# ZenML: standard 5-field cron
+# Databricks: quartz_cron_expression "0 0 2 * * ?" (simple Quartz 6-field),
+# timezone_id "America/Los_Angeles"
+# ZenML: standard 5-field cron + Databricks orchestrator timezone setting
 schedule = Schedule(cron_expression="0 2 * * *")
-my_pipeline.with_options(schedule=schedule)()
+databricks_settings = DatabricksOrchestratorSettings(
+    schedule_timezone="America/Los_Angeles",
+)
+
+my_pipeline.with_options(
+    schedule=schedule,
+    settings={"orchestrator": databricks_settings},
+)()
 ```
 
-Not all orchestrators support scheduling. Check [references/concept-map.md](references/concept-map.md) for the orchestrator support table.
+Not all orchestrators support scheduling. The Databricks orchestrator supports cron schedules only: `catchup` and interval schedules are ignored, and a schedule without `cron_expression` is invalid. Convert only simple Quartz cron expressions mechanically: dropping a zero seconds field is safe for examples like `0 0 2 * * ?`, but non-zero seconds, a year field, or Quartz-only operators such as `?`, `L`, `W`, and `#` need human review instead of blind conversion. The Databricks step operator does not own pipeline scheduling; it only offloads selected steps while another orchestrator or ZenML Pro trigger/snapshot layer starts the pipeline run. Check [references/concept-map.md](references/concept-map.md) for the orchestrator support table.
+
+#### Choosing Databricks orchestrator vs Databricks step operator
+
+Use the **Databricks orchestrator** when Databricks should run the whole ZenML pipeline as a Databricks Job whose tasks mirror the pipeline steps. Put cluster sizing and job-level behavior in `DatabricksOrchestratorSettings`: `spark_version`, `num_workers` or `autoscale`, `node_type_id`, `driver_node_type_id`, `policy_id`, `spark_conf`, `spark_env_vars`, `custom_tags`, `job_tags`, `max_concurrent_runs`, `max_retries`, `min_retry_interval_millis`, `retry_on_timeout`, `timeout_seconds`, `task_timeout_seconds`, and `schedule_timezone` for cron schedules.
+
+Use the **Databricks step operator** when the active orchestrator should still own the pipeline, but one or more selected steps should run on Databricks as one-time submitted runs. Put cluster sizing in `DatabricksStepOperatorSettings`: `spark_version`, `num_workers` or `autoscale`, `node_type_id`, `driver_node_type_id`, `policy_id`, `spark_conf`, `spark_env_vars`, `custom_tags`, `timeout_seconds`, and `task_timeout_seconds`. Do not put pipeline schedule settings here: the current Databricks step operator submits `jobs.submit` one-time runs, not persistent `jobs.create` jobs.
+
+Concrete consequence: if a migrated Databricks task used a `new_cluster` with `num_workers=8`, do **not** assume `ResourceSettings(cpu_count=8)` will create an 8-worker Databricks cluster for a step-operator run. Tell the user to configure `DatabricksStepOperatorSettings(num_workers=8, node_type_id="...")` or the equivalent autoscale settings.
 
 #### Handling Databricks Feature Engineering and Unity Catalog feature lookup
 
@@ -285,9 +304,11 @@ For patterns that have no ZenML equivalent, do NOT silently approximate them. In
 ```python
 # TODO(migration): UNSUPPORTED -- Databricks run_if='ALL_DONE' on this task.
 # ZenML does not support per-step run_if conditions. This task previously ran
-# regardless of upstream success/failure. Consider: (a) using pipeline
-# execution_mode=CONTINUE_ON_FAILURE + wrapping upstream steps in try/except,
-# or (b) splitting into separate pipelines with independent failure domains.
+# regardless of upstream success/failure. For a static pipeline, consider
+# execution_mode=CONTINUE_ON_FAILURE + wrapping upstream steps in try/except;
+# for dynamic pipelines, do not use CONTINUE_ON_FAILURE because it is not
+# currently supported. Another option is splitting into separate pipelines with
+# independent failure domains.
 @step
 def cleanup_step(upstream_status: str) -> None:
     ...
@@ -332,8 +353,8 @@ After generating the ZenML project, produce a `MIGRATION_REPORT.md` in the proje
 ## Flagged for Review
 | Databricks Pattern | Severity | Issue | Suggested Redesign |
 |---|---|---|---|
-| run_if='ALL_DONE' on cleanup | HIGH | No per-step run_if in ZenML | Use execution_mode=CONTINUE_ON_FAILURE + status artifacts |
-| file_arrival trigger | HIGH | No ZenML OSS equivalent | Cloud events -> webhook -> pipeline trigger |
+| run_if='ALL_DONE' on cleanup | HIGH | No per-step run_if in ZenML | Static pipeline: `execution_mode=CONTINUE_ON_FAILURE` + status artifacts; dynamic pipeline: use explicit status artifacts/try-except or split failure domains |
+| File arrival/table update trigger | HIGH | No ZenML OSS equivalent; current ZenML Pro platform-event triggers listen to ZenML platform events, not Databricks Unity Catalog file/table events | Cloud/Databricks events -> webhook or service -> pipeline deployment/snapshot trigger; use Pro triggers only when the event source is a supported ZenML platform event |
 | %run notebook import | HIGH | Implicit code loading | Refactor into importable Python modules |
 
 ## Notebook Refactoring Summary
@@ -343,15 +364,16 @@ After generating the ZenML project, produce a `MIGRATION_REPORT.md` in the proje
 | /Repos/acme/ml/train | %pip, Spark temp views, display() | Manual refactor required |
 
 ## Scheduling
-- **Original**: Quartz cron `0 0 2 * * ?`, timezone `US/Pacific`
+- **Original**: Quartz cron `0 0 2 * * ?`, timezone `America/Los_Angeles`
 - **Migrated**: `Schedule(cron_expression='0 2 * * *')` -- requires orchestrator with scheduling support
-- **Note**: Quartz 6-field cron converted to standard 5-field (seconds field dropped)
+- **Databricks orchestrator note**: also set `DatabricksOrchestratorSettings(schedule_timezone='America/Los_Angeles')`; use a valid IANA timezone such as `UTC`, `America/New_York`, or `America/Los_Angeles`
+- **Note**: Simple Quartz 6-field cron converted to standard 5-field because the seconds field is zero; non-zero seconds, year fields, or Quartz-only operators (`?`, `L`, `W`, `#`) require human review. Interval/catchup settings do not migrate to Databricks orchestrator schedules
 
 ## Compute and Dependency Mapping
 | Databricks Cluster / Dependency | ZenML Equivalent | Notes |
 |---|---|---|
-| cpu_cluster (i3.xlarge, 2 workers) | ResourceSettings(cpu_count=2, memory="8GiB") | Spark cluster lifecycle differs |
-| gpu_cluster (g5.2xlarge) | ResourceSettings(gpu_count=1, memory="16GiB") | GPU scheduling is orchestrator-dependent |
+| cpu_cluster (i3.xlarge, 2 workers) | `DatabricksOrchestratorSettings` or `DatabricksStepOperatorSettings` with `num_workers`/`autoscale` and `node_type_id` | Use Databricks-specific settings when the target runtime is Databricks; generic `ResourceSettings` does not size Databricks step-operator clusters |
+| gpu_cluster (g5.2xlarge) | Databricks-specific GPU Spark version/node type in orchestrator or step-operator settings | GPU scheduling is backend-specific; choose Databricks GPU cluster settings explicitly |
 | dbfs:/FileStore/wheels/acme_model.whl | Private package index / Docker build artifact | Must be accessible to remote container builds |
 
 ## Configuration Mapping
@@ -384,7 +406,7 @@ ZenML provides capabilities that Databricks Workflows do not have natively:
 - **Stack abstraction** -- same pipeline code runs on local, K8s, Vertex, SageMaker by switching stacks
 - **Model Control Plane** -- track ML models with versioning and promotion stages
 - **Service connectors** -- unified cloud auth with automatic token refresh
-- **Pipeline execution modes** -- control failure behavior (FAIL_FAST, CONTINUE_ON_FAILURE)
+- **Pipeline execution modes** -- control failure behavior in static pipelines (`FAIL_FAST`, `STOP_ON_FAILURE`, `CONTINUE_ON_FAILURE`); dynamic pipelines support `STOP_ON_FAILURE` and `FAIL_FAST`, but not `CONTINUE_ON_FAILURE`
 - **Typed artifacts** -- full datasets/models, not just 48KiB JSON blobs
 
 ## Recommended Next Steps
@@ -408,13 +430,13 @@ Always suggest this as the immediate next step:
 
 For every flagged pattern, include a link to the relevant ZenML documentation:
 
-- Scheduling: `https://docs.zenml.io/how-to/steps-pipelines/schedule-a-pipeline`
+- Scheduling: `https://docs.zenml.io/how-to/steps-pipelines/scheduling`
 - Service connectors: `https://docs.zenml.io/how-to/infrastructure-deployment/auth-management`
 - Dynamic pipelines: `https://docs.zenml.io/how-to/steps-pipelines/dynamic-pipelines`
 - Orchestrators: `https://docs.zenml.io/stacks/stack-components/orchestrators`
-- Triggers: `https://docs.zenml.io/how-to/steps-pipelines/trigger-a-pipeline`
+- Triggers: `https://docs.zenml.io/getting-started/zenml-pro/triggers`
 - Containerization/Docker: `https://docs.zenml.io/how-to/containerization/containerization`
-- Secrets management: `https://docs.zenml.io/how-to/project-setup-and-management/secret-management`
+- Secrets management: `https://docs.zenml.io/how-to/secrets/secrets`
 
 #### 3. Suggest installing the ZenML docs MCP server
 
@@ -487,7 +509,9 @@ Databricks uses `{{...}}` string substitution for dynamic references -- syntax e
 
 ### Scheduling and triggers
 
-Databricks has first-class triggers for cron, file arrival, table update, and continuous jobs. ZenML delegates scheduling to the orchestrator -- not all orchestrators support it. File arrival triggers and continuous jobs have no ZenML OSS equivalent and require external eventing infrastructure.
+Databricks has first-class triggers for cron, file arrival, table update, and continuous jobs. ZenML has two different mechanisms that are easy to mix up: OSS schedules are delegated to the orchestrator, while ZenML Pro triggers are trigger objects attached to snapshots. Current Pro schedule triggers cover time-based dispatch, and platform-event triggers react to ZenML platform events such as pipeline/run completion or failure. They should not be presented as 1:1 replacements for Databricks Unity Catalog file-arrival or table-update triggers. For those, keep an external Databricks/cloud eventing component or redesign the ingestion boundary.
+
+For Databricks orchestrator schedules specifically, use cron only and configure `DatabricksOrchestratorSettings(schedule_timezone="<IANA timezone>")`. If the original job used a Databricks timezone like `America/Los_Angeles`, preserve it there rather than burying it in a comment.
 
 ### Caching changes behavior if inputs are hidden
 
@@ -503,13 +527,15 @@ Databricks reruns tasks by default. ZenML can skip a step when code and declared
 | Passing DBFS paths between steps | DBFS paths don't exist outside Databricks | Pass data as artifacts or use cloud storage URIs |
 | Translating `condition_task` to static if/else when condition depends on runtime values | Static pipelines can't branch on step outputs | Use `@pipeline(dynamic=True)` with `.load()` |
 | Ignoring `run_if` during migration | Silently changes failure handling behavior | Always flag non-default `run_if` settings |
-| Translating `for_each_task` to a Python for loop | Loses per-item parallelism and observability | Use dynamic pipelines with `.map()` |
+| Translating `for_each_task` to a Python for loop | Loses per-item parallelism and observability | Use dynamic pipelines with `.map()`; do not recommend `CONTINUE_ON_FAILURE` for this path because dynamic pipelines currently do not support it |
 | Assuming shared cluster state | ZenML steps are isolated containers | Pass all data through artifacts, not shared memory |
 | Keeping Databricks-specific auth (managed tokens) | Won't work outside Databricks | Use ZenML secrets + service connectors |
 | Rewriting Feature Engineering Client / UC point-in-time lookups as plain SQL by default | Can silently break point-in-time correctness, online/offline behavior, and governance semantics | Preserve Databricks-native feature access when staying on Databricks, or flag for design review before rewriting |
 | Putting all migrated job parameters into `argparse` | Recreates a fragile command-line surface and bypasses ZenML config | Put business parameters and settings in populated YAML configs; keep argparse for config selection and operational flags |
 | Leaving broad `TODO(migration)` comments for known source logic | Produces TODO-heavy code even when the migration was mechanically safe | Resolve safe conversions; reserve TODOs for genuine semantic gaps, missing dependencies, credentials, or infra choices |
 | Enabling caching on steps with hidden mutable inputs or side effects | Runs may skip necessary reads/writes/logging | Make versions/timestamps explicit inputs or disable caching for those steps |
+| Using generic `ResourceSettings` to size Databricks step-operator clusters | ZenML does not translate those generic settings into Databricks cluster specs for the step operator | Use `DatabricksStepOperatorSettings(num_workers=..., node_type_id=..., autoscale=...)` or `DatabricksOrchestratorSettings` for whole-pipeline Databricks execution |
+| Treating a ZenML deployment or streaming event as a Databricks continuous job | Deployments are HTTP services and streaming events are best-effort telemetry; neither is an always-on Spark streaming job with Databricks auto-restart semantics | Keep streaming compute in an appropriate service, use deployments for request/response APIs, and use `zenml.streaming.publish()` only for live progress/events from a running pipeline |
 
 ## References
 

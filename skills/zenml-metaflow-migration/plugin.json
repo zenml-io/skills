@@ -1,6 +1,6 @@
 {
   "name": "zenml-metaflow-migration",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Migrate Metaflow flows to idiomatic ZenML pipelines with FlowSpec mapping, artifact translation, and unsupported pattern flagging",
   "author": {
     "name": "ZenML Team",

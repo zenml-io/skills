@@ -3,8 +3,9 @@ name: zenml-pipeline-authoring
 description: >-
   Author ZenML pipelines: @step/@pipeline decorators, type hints, multi-output
   steps, dynamic vs static pipelines, artifact data flow, ExternalArtifact,
-  YAML configuration, DockerSettings for remote execution, custom materializers,
-  metadata logging, secrets management, and custom visualizations. Use this skill
+  YAML configuration, DockerSettings and ResourceSettings for remote execution,
+  custom materializers, metadata logging, secrets management, pipeline deployments,
+  live streaming events, and custom visualizations. Use this skill
   whenever asked to write a ZenML pipeline, create ZenML steps, make a pipeline
   work on Kubernetes/Vertex/SageMaker, add Docker settings, write a materializer,
   create a custom visualization, handle "works locally but fails on cloud" issues,
@@ -294,7 +295,7 @@ for i, val in enumerate(items.load()):   # load to iterate
 
 For map/reduce patterns, `.map()` fans out over a collection. For explicit parallelism, `.submit()` returns a future.
 
-See [references/dynamic-pipelines.md](references/dynamic-pipelines.md) for the complete API: `.map()`, `.product()`, `.submit()`, `unmapped()`, `.unpack()`, runtime modes, orchestrator support table, and limitations.
+See [references/dynamic-pipelines.md](references/dynamic-pipelines.md) for the complete API: `.map()`, `.product()`, `.submit()`, `unmapped()`, `.unpack()`, child pipelines, `.embed()`, runtime modes, execution-mode caveats, orchestrator support table, and limitations.
 
 ---
 
@@ -334,8 +335,8 @@ art = save_artifact(data=df, name="my_dataset")
 print(art.id)  # Pass this UUID to the pipeline
 
 # pipeline.py (runs inside the orchestrator pod)
-from zenml.client import Client
 from uuid import UUID
+from zenml.client import Client
 
 @pipeline
 def my_pipeline(dataset_id: str) -> None:
@@ -343,7 +344,7 @@ def my_pipeline(dataset_id: str) -> None:
     train(data=artifact)
 ```
 
-**Important**: `ExternalArtifact(id=...)` is rejected by the current validator. Use `Client().get_artifact_version()` instead.
+**Important**: do not construct `ExternalArtifact(id=...)` in user code. The public `ExternalArtifact` class is for `value=...` uploads; its internal config carries an ID only after upload. For existing artifacts, use `Client().get_artifact_version(...)`. The stale patterns are `ExternalArtifact(name=...)`, `version=...`, and `model=...`.
 
 See [references/external-data.md](references/external-data.md) for additional patterns including `register_artifact()`.
 
@@ -413,6 +414,25 @@ See [references/docker-settings.md](references/docker-settings.md) for the full 
 
 ---
 
+## Resource Settings and Resource Pools
+
+Use `ResourceSettings` when a step needs explicit compute: CPUs, memory, GPUs, preemptibility, or custom pool resources.
+
+```python
+from zenml import step
+from zenml.config import ResourceSettings
+
+@step(settings={"resources": ResourceSettings(cpu_count=4, gpu_count=1, memory="16GiB")})
+def train_model(...) -> ...:
+    ...
+```
+
+For ZenML Pro resource pools, these same step-level settings become server-side resource requests for **dynamic pipelines**: `gpu_count` maps to `gpu`, `cpu_count` maps to `mcpu`, `memory` maps to `memory_mb`, and ZenML adds an implicit `step_run` slot. Resource pools are a paid Pro feature and do not apply to static pipelines today.
+
+Do not assume generic `ResourceSettings` controls every backend's machine shape. Some orchestrators or step operators expose dedicated settings for their compute layer.
+
+---
+
 ## Metadata Logging
 
 Log metadata from within steps to track metrics, parameters, and results in the ZenML dashboard. This is essential for production pipelines — every training step, evaluation step, and data quality step should log relevant metadata.
@@ -463,6 +483,15 @@ def load_from_database(query: str) -> pd.DataFrame:
 ```
 
 This works on any orchestrator — the secret store is centralized in the ZenML server.
+
+If private and public secrets can share the same name, be explicit instead of relying on search order:
+
+```python
+private_secret = Client().get_secret("db_credentials", private=True)
+shared_secret = Client().get_secret("shared_service", private=False)
+```
+
+Private secrets are only visible to their creator; public secrets follow the workspace/RBAC rules.
 
 ---
 
@@ -577,7 +606,11 @@ Run the pipeline on a recurring schedule. Use `Schedule(cron_expression="0 2 * *
 
 ### Pipeline Deployment (HTTP serving)
 
-For real-time inference or agent workflows, pipelines can be deployed as persistent HTTP services using `pipeline.deploy(deployment_name="my_service")`. This replaces the deprecated model deployer components. For advanced deployment patterns and production configuration, see the [deployment docs](https://docs.zenml.io/how-to/deployment/deployment).
+For real-time inference or agent workflows, pipelines can be deployed as persistent HTTP services using `pipeline.deploy(deployment_name="my_service")`. This replaces the deprecated model deployer components. Use pipeline-level `DeploymentSettings` for ASGI app/server behavior such as custom endpoints, CORS, middleware, secure headers, thread pools, and uvicorn configuration.
+
+### Live Streaming Events
+
+When a running step needs to surface progress before it returns — for example LLM tokens, progress updates, or live dashboard events — use `zenml.streaming.publish()`. Treat streaming events as best-effort live telemetry, not storage: payloads are JSON dicts, size-capped, can be dropped under load, and require server-side streaming support. Use metadata or artifacts for durable records.
 
 See [references/post-creation.md](references/post-creation.md) for detailed patterns for all of the above.
 
@@ -591,7 +624,7 @@ See [references/post-creation.md](references/post-creation.md) for detailed patt
 | Write to `/tmp` and read in next step | Works locally, fails on K8s | Use artifact outputs |
 | Missing type hints on step | Silent failures, no caching | Add type annotations to all inputs/outputs |
 | `cloudpickle` for production artifacts | Breaks across Python versions | Write a custom `BaseMaterializer` |
-| `ExternalArtifact(id=...)` | `ValueError` from validator | Use `Client().get_artifact_version()` |
+| `ExternalArtifact(id=...)`, `name=...`, `version=...`, or `model=...` in user code | `id` is rejected by the public class; lookup fields are removed | Use `ExternalArtifact(value=...)` for new values, or `Client().get_artifact_version(...)` for existing artifacts |
 | Missing `DockerSettings` deps | `ModuleNotFoundError` in container | Add to `requirements` or `required_integrations` |
 | Imports inside pipeline function body | Fails in container if module not available | Import at module level |
 | No `zenml init` at project root | Import errors in remote steps | Run `zenml init` to set source root |

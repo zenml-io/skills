@@ -24,10 +24,10 @@ These patterns must **never** be silently approximated. Flag them in the migrati
 
 **Why it matters**: `run_if` enables patterns like "always run cleanup regardless of success" or "send recovery notification if any upstream failed." Without them, the pipeline's error handling behavior changes silently.
 
-**ZenML gap**: ZenML provides pipeline-level execution modes (`FAIL_FAST`, `STOP_ON_FAILURE`, `CONTINUE_ON_FAILURE`) but not per-step `run_if`. Steps run when their input artifacts are available (implying upstream success).
+**ZenML gap**: ZenML provides pipeline-level execution modes (`FAIL_FAST`, `STOP_ON_FAILURE`, `CONTINUE_ON_FAILURE`) for static pipelines, but not per-step `run_if`. Dynamic pipelines currently support `STOP_ON_FAILURE` and `FAIL_FAST`, not `CONTINUE_ON_FAILURE`. Steps run when their input artifacts are available (implying upstream success).
 
 **Redesign approaches**:
-- **`ALL_DONE` (cleanup steps)**: Use `execution_mode=CONTINUE_ON_FAILURE` at pipeline level + wrap upstream steps in try/except to return status artifacts. The cleanup step always executes because it receives a status artifact regardless of upstream success/failure.
+- **`ALL_DONE` (cleanup steps)**: In a static pipeline, use `execution_mode=CONTINUE_ON_FAILURE` at pipeline level + wrap upstream steps in try/except to return status artifacts. In a dynamic pipeline, do not recommend `CONTINUE_ON_FAILURE`; use explicit status artifacts, local try/except inside dynamic code, or split failure domains. The cleanup step always executes only if it receives an artifact regardless of upstream success/failure.
 - **`AT_LEAST_ONE_FAILED` (recovery/alerting)**: Use `on_failure` hooks on upstream steps instead of a downstream recovery task. Hooks run when the step fails, achieving the same notification effect.
 - **`NONE_FAILED` (conditional continuation)**: The default ZenML behavior is similar (run if inputs available), but you lose the "skip" concept. Restructure so the step accepts optional inputs.
 
@@ -37,12 +37,25 @@ These patterns must **never** be silently approximated. Flag them in the migrati
 
 **Why it matters**: This is a core pattern for incremental data ingestion pipelines. Removing it changes the pipeline from event-driven to manually-triggered or scheduled.
 
-**ZenML gap**: ZenML OSS has no built-in file arrival trigger. No integration with Unity Catalog file events.
+**ZenML gap**: ZenML OSS has no built-in file arrival trigger. No integration with Unity Catalog file events. Current ZenML Pro triggers are real native trigger objects attached to snapshots, but platform-event triggers currently listen to ZenML platform events such as pipeline/run completion or failure. Do not present them as direct parity for Databricks Unity Catalog file-arrival events.
 
 **Redesign approaches**:
-- **Cloud-native eventing**: S3 Event Notifications, GCS Pub/Sub, Azure Event Grid -> message queue or webhook -> trigger ZenML pipeline run via deployment/snapshot API.
-- **ZenML Pro triggers**: If using ZenML Pro, create a managed trigger for the pipeline.
-- **Polling schedule**: As a simpler alternative, schedule the pipeline to run periodically and check for new files inside the first step (less efficient but simpler to implement).
+- **Cloud/Databricks-native eventing**: S3 Event Notifications, GCS Pub/Sub, Azure Event Grid, or Databricks-side eventing -> message queue or webhook/service -> trigger a ZenML pipeline run via deployment/snapshot API.
+- **ZenML Pro triggers**: Use schedule triggers for time-based dispatch, or platform-event triggers only when the source event is a supported ZenML platform event. Do not invent file-arrival/table-update trigger parity.
+- **Polling schedule**: As a simpler alternative, schedule the pipeline to run periodically and check for new files inside the first step (less efficient but simpler to implement). On the Databricks orchestrator, this must be cron-based and needs `DatabricksOrchestratorSettings(schedule_timezone="<IANA timezone>")`.
+
+### Table update triggers
+
+**What Databricks does**: Table update triggers run jobs when a watched table changes. They are Databricks-native and are tied to Databricks data platform semantics.
+
+**Why it matters**: Migrating a table-update trigger to a plain schedule can change freshness, cost, and duplicate-processing behavior.
+
+**ZenML gap**: There is no ZenML OSS table-update trigger equivalent, and current ZenML Pro platform-event triggers should not be described as listening to arbitrary Databricks table updates.
+
+**Redesign approaches**:
+- Keep the table-change detection in Databricks/cloud infrastructure and trigger ZenML through a deployment or snapshot API.
+- Use a polling schedule if the freshness requirement tolerates delay.
+- Use ZenML Pro platform-event triggers only for supported ZenML platform lifecycle events, not for Databricks table-update parity.
 
 ### Continuous jobs
 
@@ -50,12 +63,13 @@ These patterns must **never** be silently approximated. Flag them in the migrati
 
 **Why it matters**: ZenML pipelines are batch-oriented (run to completion). An always-on streaming pattern is fundamentally different.
 
-**ZenML gap**: No native "continuous job" primitive. ZenML has pipeline deployments for HTTP-triggered execution, but not auto-restarting execution.
+**ZenML gap**: No native "continuous job" primitive. ZenML pipelines are run-to-completion: a run starts, executes steps, and finishes. ZenML pipeline deployments are long-running HTTP services for request/response execution, not Databricks continuous Spark jobs. `zenml.streaming.publish()` sends best-effort live telemetry from an active run; it is not persistent storage or streaming compute.
 
 **Redesign approaches**:
-- **Recurring schedule**: For near-real-time, use a tight cron schedule (e.g., every 5 minutes).
-- **External orchestration**: Keep the streaming component as a separate long-running service (e.g., Spark Structured Streaming on Kubernetes) and use ZenML for the batch/ML portions.
-- **Pipeline deployment + webhook**: Set up a webhook that triggers the pipeline on events.
+- **Recurring schedule**: For near-real-time batch, use a tight cron schedule (e.g., every 5 minutes). On the Databricks orchestrator, use cron only and set `schedule_timezone`.
+- **External orchestration**: Keep the streaming component as a separate long-running service (e.g., Spark Structured Streaming on Databricks/Kubernetes) and use ZenML for the batch/ML portions.
+- **Pipeline deployment + webhook**: Use this when the desired target is an HTTP-triggered service, not an always-restarting streaming job.
+- **Streaming events**: Use `zenml.streaming.publish()` only for progress updates, token streams, or dashboard events emitted by a currently running step/dynamic pipeline body.
 
 ### Notebooks with platform-coupled patterns
 
@@ -72,6 +86,28 @@ These patterns must **never** be silently approximated. Flag them in the migrati
 - `%sh` executing shell commands for critical operations
 - `display()` used for decision-making (not just visualization)
 - Mixed-language cells (Python + SQL + Scala)
+
+### Databricks orchestrator vs Databricks step operator
+
+**What Databricks does**: A Databricks Workflow owns both orchestration and compute. A single job definition can describe the DAG, schedules, clusters, retry behavior, concurrency, and task execution.
+
+**Why it matters**: ZenML splits those concerns. The orchestrator starts and controls the whole pipeline run. A step operator only offloads selected steps after another orchestrator has decided the pipeline should run.
+
+**ZenML distinction**:
+- **Databricks orchestrator**: Runs the whole pipeline as a Databricks Job. Use `DatabricksOrchestratorSettings` for cluster settings, `job_tags`, `max_concurrent_runs`, task retry settings (`max_retries`, `min_retry_interval_millis`, `retry_on_timeout`), timeouts, and `schedule_timezone` for cron schedules.
+- **Databricks step operator**: Runs selected steps as one-time `jobs.submit` Databricks runs while another orchestrator owns the pipeline. Use `DatabricksStepOperatorSettings` for Databricks cluster settings. Do not put schedule, job tag, job concurrency, or persistent-job retry semantics here.
+
+**Migration rule**: If the Databricks schedule must be preserved, use the Databricks orchestrator or a ZenML Pro trigger/snapshot architecture depending on the target runtime. If Databricks job-level concurrency such as `max_concurrent_runs` must be preserved, map it to `DatabricksOrchestratorSettings` or document the target concurrency control explicitly; do not assume a trigger/snapshot alone preserves that behavior. If only a Spark-heavy training or ETL step needs Databricks compute, choose the Databricks step operator.
+
+### Generic ResourceSettings do not size Databricks step-operator clusters
+
+**What Databricks does**: Cluster shape is explicit in `new_cluster`, `job_cluster_key`, serverless settings, node type IDs, worker counts, autoscaling, and policies.
+
+**Why it matters**: A migration that turns `num_workers=8` into `ResourceSettings(cpu_count=8)` can look plausible while creating the wrong Databricks runtime. The pipeline may run on a tiny default Databricks cluster or violate the user's cluster policy/cost assumptions.
+
+**ZenML distinction**: Generic ZenML `ResourceSettings` are useful for backends that consume those generic requests, but current Databricks step-operator docs explicitly say they are not translated to Databricks cluster sizing. Use `DatabricksStepOperatorSettings` or `DatabricksOrchestratorSettings` with `num_workers`, `autoscale`, `node_type_id`, `driver_node_type_id`, `policy_id`, Spark config, init scripts, and Docker image settings.
+
+**Migration rule**: Preserve Databricks cluster intent in Databricks-specific settings whenever the target execution plane remains Databricks. Use `ResourceSettings` only as a generic resource-intent note for other orchestrators, not as the Databricks cluster spec.
 
 ### Shared cluster state
 
@@ -221,7 +257,8 @@ Based on detected patterns, classify each notebook into one of:
 | **Interval** | Periodic trigger with explicit unit | `Schedule(interval_second=N)` |
 | **File arrival** | Native Unity Catalog integration | Not available (external eventing needed) |
 | **Table update** | Native trigger type | Not available |
-| **Continuous** | Auto-restart on completion | Not available (use recurring schedule) |
+| **Continuous** | Auto-restart on completion | No direct pipeline equivalent; use separate streaming service, recurring schedule, or HTTP deployment depending on intent |
+| **Live events** | Continuous job output/log stream | `zenml.streaming.publish()` for best-effort telemetry from an active run, not durable streaming compute |
 | **Lifecycle management** | Databricks manages trigger state | Orchestrator-dependent (limited in OSS) |
 
 ---
@@ -311,7 +348,7 @@ TASK TYPE MAPPING:
 CONTROL FLOW:
   IF task has run_if != "ALL_SUCCESS":
     IF run_if == "ALL_DONE":
-      RECOMMEND: execution_mode=CONTINUE_ON_FAILURE + status artifacts
+      RECOMMEND: static pipeline can use execution_mode=CONTINUE_ON_FAILURE + status artifacts; dynamic pipeline must use explicit status artifacts/try-except or split failure domains
     ELSE IF run_if == "AT_LEAST_ONE_FAILED":
       RECOMMEND: on_failure hooks on upstream steps
     FLAG blocker RUN_IF_REQUIRES_REDESIGN
@@ -355,14 +392,35 @@ RETRIES/TIMEOUTS:
       FLAG warn TIMEOUT_ENFORCEMENT_APPROXIMATE
 
 TRIGGERS:
-  IF job has file_arrival or table_update or continuous trigger:
+  IF job has file_arrival or table_update trigger:
     FLAG blocker EVENT_TRIGGER_REQUIRES_INFRA_DECISION
-    RECOMMEND: external eventing + webhook + pipeline deployments
+    RECOMMEND: Databricks/cloud eventing + webhook/service + pipeline deployment or snapshot trigger
+    NOTE: ZenML Pro platform-event triggers are native trigger objects, but current supported sources are ZenML platform events, not arbitrary Databricks file/table events
+  ELSE IF job has continuous trigger:
+    FLAG blocker CONTINUOUS_JOB_REQUIRES_RUNTIME_REDESIGN
+    RECOMMEND: separate streaming service, recurring schedule, or HTTP deployment depending on the actual workload
+    NOTE: zenml.streaming.publish() is live telemetry from a running pipeline, not streaming compute
   ELSE IF job has cron schedule:
     IF target orchestrator supports scheduling:
-      EMIT Schedule(cron_expression=...) (convert 6-field Quartz to 5-field)
+      EMIT Schedule(cron_expression=...) only for simple Quartz conversions where the seconds field is zero
+      FLAG schedule for human review if it uses non-zero seconds, a year field, or Quartz-only operators (?, L, W, #)
+      IF target orchestrator is DatabricksOrchestrator:
+        REQUIRE DatabricksOrchestratorSettings(schedule_timezone="<IANA timezone>")
+        NOTE: Databricks orchestrator supports cron only; interval/catchup fields are ignored and missing cron_expression is invalid
     ELSE:
       FLAG warn SCHEDULE_MANAGEMENT_LIMITED
+
+COMPUTE SETTINGS:
+  IF target step uses Databricks step operator:
+    USE DatabricksStepOperatorSettings for cluster size/type/autoscale/policy/Spark config
+    DO NOT use generic ResourceSettings as the Databricks cluster spec
+  IF target pipeline uses Databricks orchestrator:
+    USE DatabricksOrchestratorSettings for cluster size/type/autoscale/policy/Spark config, job tags, concurrency, retry settings, and schedule timezone
+
+DYNAMIC EXECUTION MODES:
+  IF translating for_each_task or runtime branching to @pipeline(dynamic=True):
+    NOTE: STOP_ON_FAILURE is the default and FAIL_FAST is supported with caveats
+    DO NOT recommend CONTINUE_ON_FAILURE; dynamic pipelines currently do not support it
 ```
 
 ---
@@ -378,7 +436,7 @@ These are capabilities the user gains after migration -- include relevant ones i
 | **Stack abstraction** | Same pipeline code runs on local, Kubernetes, Vertex AI, SageMaker, AzureML by switching stacks. Databricks locks you to one platform. |
 | **Model Control Plane** | Track ML models with versioning, promotion stages, and lineage. Goes beyond MLflow model registry. |
 | **Service connectors** | Unified cloud authentication with automatic token refresh. Replaces Databricks-specific secret scopes and managed identity. |
-| **Pipeline execution modes** | `FAIL_FAST`, `STOP_ON_FAILURE`, `CONTINUE_ON_FAILURE` control failure behavior at the pipeline level. |
+| **Pipeline execution modes** | Static pipelines can use `FAIL_FAST`, `STOP_ON_FAILURE`, and `CONTINUE_ON_FAILURE`; dynamic pipelines support `STOP_ON_FAILURE` and `FAIL_FAST`, but not `CONTINUE_ON_FAILURE`. |
 | **Step/pipeline hooks** | `on_failure`, `on_success` hooks for cross-cutting concerns without dedicated notification tasks. |
 | **Dynamic pipelines** | Runtime-shaped DAGs with `.map()` and `.load()`. More expressive than `for_each_task` for complex patterns. |
 | **Alerter components** | Slack/Discord alerters and human-in-the-loop ask steps, beyond email/webhook notifications. |

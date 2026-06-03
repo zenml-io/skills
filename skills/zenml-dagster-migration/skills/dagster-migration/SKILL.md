@@ -99,18 +99,18 @@ For each component identified in Phase 1, classify it using the mapping type (di
 - `@multi_asset` -> multi-output step
 - `@graph_asset` -> helper steps plus a terminal output artifact
 - `ConfigurableResource` -> stack components + secrets + service connectors + step-local helper objects
-- schedules -> `Schedule(...)` on supported orchestrators
+- schedules -> OSS/orchestrator-backed `Schedule(...)` on supported orchestrators, with `zenml pipeline schedule ...` for supported lifecycle operations; ZenML Pro schedule triggers are separate server-side trigger objects attached to snapshots
 - `IOManager` -> artifact store/materializer plus explicit source/sink steps
 - `SourceAsset` -> `ExternalArtifact` or explicit source-loading step
 - asset-check logic -> validation step body, but without Dagster's independently managed check-node semantics
-- `DynamicOutput` fan-out -> dynamic pipeline or explicit redesign
+- `DynamicOutput` fan-out -> dynamic pipeline or explicit redesign; dynamic pipelines default to `STOP_ON_FAILURE`, support `FAIL_FAST` with caveats, and do not support `CONTINUE_ON_FAILURE`
 
 **Absent / needs redesign (flag for human review):**
 - asset selection and subset materialization semantics
 - partition mappings and non-trivial partition/backfill behavior
 - declarative automation / auto-materialize policies
 - freshness policies as first-class orchestration rules
-- sensors and asset sensors
+- sensors and asset sensors; ZenML Pro platform-event triggers may cover supported ZenML platform lifecycle events, but Dagster sensor cursors and arbitrary sensor evaluation logic need redesign
 - observable source assets as first-class graph nodes
 - IO managers that embed business logic beyond serialization
 - `@multi_asset` subset semantics
@@ -271,7 +271,7 @@ After generating the ZenML project, produce a `MIGRATION_REPORT.md` in the proje
 |---|---|---|---|
 | Asset selection | HIGH | No first-class subset materialization in ZenML | Split into multiple pipelines |
 | Daily partitions + partition mappings | HIGH | No native partition engine | Explicit partition-key params + external backfill driver |
-| Sensor cursor | HIGH | No sensor/cursor API | External event trigger service |
+| Sensor cursor | HIGH | No Dagster-style sensor/cursor API | External event service, ZenML Pro platform-event trigger for supported ZenML platform events, or snapshot/API/deployment trigger redesign |
 
 ## IO / Storage Migration
 [Summarize what was preserved and what moved out of IO managers]
@@ -280,7 +280,7 @@ After generating the ZenML project, produce a `MIGRATION_REPORT.md` in the proje
 [Explain how partition keys and backfills are handled after migration]
 
 ## Automation and Scheduling Gaps
-[Explain schedules, sensors, freshness, declarative automation, and what changed]
+[Explain schedules, sensors, freshness, declarative automation, and what changed. Distinguish OSS/orchestrator schedules (`Schedule(...)` plus `zenml pipeline schedule ...` where supported) from ZenML Pro schedule/platform-event trigger objects attached to snapshots. Do not present Dagster sensors, sensor cursors, declarative automation, or freshness policies as 1:1 ZenML equivalents.]
 
 ## What's NOT Migrated
 [List the Dagster semantics or platform features left outside the migrated code]
@@ -314,10 +314,11 @@ Always suggest this as the immediate next step:
 For every flagged pattern, include relevant ZenML documentation links. Prefer stable, high-level docs areas when the exact implementation path depends on the user's stack:
 
 - Artifact management / external artifacts: `https://docs.zenml.io/user-guides/starter-guide/manage-artifacts`
-- Dynamic pipelines: `https://docs.zenml.io/concepts/steps_and_pipelines/dynamic_pipelines`
-- Scheduling: `https://docs.zenml.io/concepts/steps_and_pipelines/scheduling`
-- Pipeline deployments / service-style triggering: `https://docs.zenml.io/concepts/deployment`
-- Orchestrators and scheduling: `https://docs.zenml.io/stacks/orchestrators`
+- Dynamic pipelines: `https://docs.zenml.io/how-to/steps-pipelines/dynamic-pipelines`
+- Scheduling: `https://docs.zenml.io/how-to/steps-pipelines/scheduling`
+- Pipeline deployments / service-style triggering: `https://docs.zenml.io/how-to/deployment/deployment`
+- ZenML Pro triggers: `https://docs.zenml.io/getting-started/zenml-pro/triggers`
+- Orchestrators and scheduling: `https://docs.zenml.io/stacks/stack-components/orchestrators`
 - Service connectors: `https://docs.zenml.io/stacks/service-connectors`
 - Best practices / access management: `https://docs.zenml.io/user-guides/best-practices`
 
@@ -371,7 +372,7 @@ Passing `partition_key="2026-04-07"` into a ZenML pipeline preserves the label. 
 
 ### Sensors become trigger systems, not steps that wait forever
 
-A Dagster sensor is usually better reimagined as an external trigger or polling service. Otherwise you risk turning a lightweight orchestration rule into an expensive long-running container.
+A Dagster sensor is usually better reimagined as an external trigger or polling service. ZenML Pro also has schedule and platform-event trigger objects that attach to snapshots, which can fit some ZenML-platform event cases. They do not preserve Dagster sensor cursors, asset-sensor evaluation loops, or declarative automation semantics by themselves. Otherwise you risk turning a lightweight orchestration rule into an expensive long-running container.
 
 ## Anti-Patterns in Migration
 
@@ -380,7 +381,7 @@ A Dagster sensor is usually better reimagined as an external trigger or polling 
 | Treating every asset as its own pipeline | Destroys meaningful execution grouping | Group assets by real operational boundary |
 | Forcing the entire asset graph into one pipeline | Hides the loss of subset materialization semantics | Split into multiple pipelines when needed |
 | Translating every IOManager into a materializer | Loses business/data-access behavior | Separate serialization from explicit source/sink logic |
-| Replacing sensors with infinite polling steps | Burns compute and changes operational behavior | Use external triggers or bounded polling logic |
+| Replacing sensors with infinite polling steps | Burns compute and changes operational behavior | Use ZenML Pro snapshot triggers where supported, external triggers, or bounded polling logic |
 | Collapsing partition logic into a single untyped string without documenting the loss | Drops critical orchestration semantics | Preserve partition parameters explicitly and document gaps |
 | Treating asset checks as comments instead of executable validation | Loses enforcement | Create validation steps and log metadata |
 

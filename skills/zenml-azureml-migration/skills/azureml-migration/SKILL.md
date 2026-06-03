@@ -350,12 +350,12 @@ Always suggest this first:
 
 For flagged patterns, include targeted docs:
 
-- Scheduling: `https://docs.zenml.io/how-to/steps-pipelines/schedule-a-pipeline`
+- Scheduling: `https://docs.zenml.io/how-to/steps-pipelines/scheduling`
 - Orchestrators: `https://docs.zenml.io/stacks/stack-components/orchestrators`
 - AzureML orchestrator: `https://docs.zenml.io/stacks/stack-components/orchestrators/azureml`
 - Dynamic pipelines: `https://docs.zenml.io/how-to/steps-pipelines/dynamic-pipelines`
 - Containerization: `https://docs.zenml.io/how-to/containerization/containerization`
-- Secrets management: `https://docs.zenml.io/how-to/project-setup-and-management/secret-management`
+- Secrets management: `https://docs.zenml.io/how-to/secrets/secrets`
 - Auth / service connectors: `https://docs.zenml.io/how-to/infrastructure-deployment/auth-management`
 - Models / MCP: `https://docs.zenml.io/how-to/model-management-and-deployment`
 

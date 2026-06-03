@@ -273,19 +273,54 @@ schedule = Schedule(
 )
 ```
 
-### Managing Schedules
+### Managing OSS / orchestrator schedules
+
+Use the singular `pipeline schedule` command group:
 
 ```bash
 # List schedules
-zenml pipeline schedules list
+zenml pipeline schedule list
 
-# Delete a schedule (also delete in orchestrator!)
-zenml pipeline schedules delete <schedule_id>
+# Update cron expression
+zenml pipeline schedule update <schedule_name_or_id> --cron-expression='0 4 * * *'
+
+# Pause/resume
+zenml pipeline schedule deactivate <schedule_name_or_id>
+zenml pipeline schedule activate <schedule_name_or_id>
+
+# Delete a schedule
+zenml pipeline schedule delete <schedule_name_or_id>
+
+# Hard delete all references/history for that schedule
+zenml pipeline schedule delete <schedule_name_or_id> --hard
 ```
 
-**Important:** Deleting from ZenML doesn't remove from orchestrator. Delete in both places.
+For some orchestrators, deleting from ZenML may not remove the native schedule. Check the orchestrator docs and delete native schedules there if needed.
 
-**Docs:** https://docs.zenml.io/how-to/steps-pipelines/scheduling
+### ZenML Pro schedule triggers
+
+If the user is on ZenML Pro and works with snapshots, schedule triggers are server-side paid trigger objects attached to snapshots. They are managed separately from OSS/orchestrator schedules:
+
+```bash
+# Create a schedule trigger
+zenml trigger schedule create daily-schedule-6-am --cron-expression "0 6 * * *"
+
+# Attach trigger first, snapshot second
+zenml trigger schedule attach "<TRIGGER_NAME_OR_ID>" "<SNAPSHOT_NAME_OR_ID>"
+
+# List active schedule triggers
+zenml trigger schedule list --active=true
+
+# Clear dispatch errors
+zenml trigger schedule clear-errors "my-schedule"
+
+# Soft delete, hard delete, or hard-delete an archived trigger
+zenml trigger schedule delete "my-schedule"
+zenml trigger schedule delete "my-schedule" --hard
+zenml trigger schedule delete "my-old-schedule" --archived --hard
+```
+
+**Docs:** https://docs.zenml.io/how-to/steps-pipelines/scheduling and https://docs.zenml.io/getting-started/zenml-pro/triggers
 
 ---
 
@@ -353,6 +388,10 @@ client = Client()
 secret = client.get_secret("database")
 username = secret.secret_values["username"]
 password = secret.secret_values["password"]
+
+# If private and public secrets can share a name, be explicit.
+private_secret = client.get_secret("database", private=True)
+shared_secret = client.get_secret("shared_service", private=False)
 ```
 
 ### Manage Secrets
@@ -364,7 +403,7 @@ zenml secret update <name> --key=new_value
 zenml secret delete <name>
 ```
 
-**Docs:** https://docs.zenml.io/concepts/secrets
+**Docs:** https://docs.zenml.io/how-to/secrets/secrets
 
 ---
 
@@ -685,9 +724,10 @@ FROM python:3.11-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git curl build-essential && rm -rf /var/lib/apt/lists/*
 
-# Pre-install heavy dependencies
+# Pre-install heavy dependencies.
+# Match the ZenML version used by your project/stack; do not pin an old example.
 RUN pip install --no-cache-dir \
-    zenml==0.70.0 \
+    "zenml>=0.94.1" \
     torch==2.0.0 \
     scikit-learn==1.2.2 \
     pandas==2.0.0
@@ -722,7 +762,7 @@ def training_pipeline():
     ...
 ```
 
-**Docs:** https://docs.zenml.io/concepts/containerization
+**Docs:** https://docs.zenml.io/how-to/containerization/containerization
 
 ---
 
@@ -813,6 +853,86 @@ export ZENML_CLI_COLUMN_WIDTH=120
 ```
 
 **Docs:** https://docs.zenml.io/reference/environment-variables
+
+---
+
+## 16. Live Streaming Events
+
+**Why:** Show intermediate output while a step is still running — useful for LLM tokens, progress bars, long-running agents, or dashboards that should update before the step returns.
+
+### Publish from a Step
+
+```python
+from zenml import step
+from zenml.streaming import flush, publish
+
+@step
+def summarize_documents(documents: list[str]) -> str:
+    chunks = []
+    for index, chunk in enumerate(stream_summary(documents)):
+        chunks.append(chunk)
+        publish(
+            {"text": chunk},
+            kind="token",
+            correlation_id="summary-1",
+            index=index,
+        )
+
+    # Optional: wait only when a later action depends on delivery.
+    flush(timeout=2.0)
+    return "".join(chunks)
+```
+
+### Caveats
+
+- Server-side live streaming must be enabled.
+- Events are best-effort telemetry, not persistent storage.
+- Payloads must be JSON dicts and are capped at 64 KiB.
+- The producer queue can drop older events under load.
+- Use metadata or artifacts for durable facts you need after the run.
+
+**Docs:** https://docs.zenml.io/how-to/steps-pipelines/streaming-events
+
+---
+
+## 17. Resource Pools / Resource Requests (ZenML Pro)
+
+**Why:** Prevent shared GPUs/CPUs from becoming a free-for-all when many dynamic steps or teams compete for capacity.
+
+### Step Requests
+
+```python
+from zenml import step
+from zenml.config import ResourceSettings
+
+@step(
+    settings={
+        "resources": ResourceSettings(
+            gpu_count=1,
+            cpu_count=4,
+            memory="16GiB",
+            preemptible=True,
+        )
+    }
+)
+def train_model(...) -> ...:
+    ...
+```
+
+For eligible **dynamic pipelines**, ZenML Pro turns `ResourceSettings` into resource requests:
+
+| `ResourceSettings` field | Resource request key |
+|--------------------------|----------------------|
+| `gpu_count` | `gpu` |
+| `cpu_count` | `mcpu` |
+| `memory` | `memory_mb` |
+| every step run | implicit `step_run` |
+
+### When to Recommend
+
+Use this quick win when the user mentions shared GPUs, fairness, quotas, preemption, runaway fan-out, or many dynamic steps. Be clear that resource pools are a paid ZenML Pro feature and only apply to dynamic pipelines today.
+
+**Docs:** https://docs.zenml.io/getting-started/zenml-pro/resource-pools
 
 ---
 

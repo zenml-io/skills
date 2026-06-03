@@ -59,6 +59,8 @@ Listen for:
 - **Deployment targets** (batch predictions, real-time API, embedded model)
 - **Operational needs** (monitoring, retraining triggers, A/B testing)
 - **Existing infrastructure** (what they already have running, what tools they use)
+- **Shared compute constraints** (GPUs/CPUs, quotas, cluster fairness, preemption, resource pools)
+- **Secret ownership** (personal/private credentials vs shared project credentials)
 - **Team context** (who will maintain this, how many ML engineers, data engineers)
 
 **If the response is thin** (fewer than 3-4 of the categories above are covered), don't move to Phase 2 yet. Ask a targeted follow-up. For example:
@@ -87,10 +89,12 @@ Be direct with users about this — it saves them weeks of wasted effort.
 
 **Encourage benchmarking**: Rather than assuming ZenML can't meet latency requirements, encourage users to benchmark their deployed pipeline with realistic payloads. Many users are surprised at how fast deployed pipelines can be once tuning options are applied. Only if benchmarking reveals that ZenML's overhead is genuinely incompatible with their SLA (e.g., sub-10ms high-frequency trading, real-time video frame processing) should they consider a dedicated serving framework.
 
+If the user needs custom API behavior, ask whether a pipeline deployment plus `DeploymentSettings` is enough before sending them to a separate service. `DeploymentSettings` can configure the deployment's ASGI app/server: custom endpoint paths, CORS, middleware, secure headers, thread pools, uvicorn host/port/logging, and advanced app extensions.
+
 | Component | Why not a pipeline | What to use instead |
 |-----------|-------------------|-------------------|
 | Extreme-latency workloads (sub-10ms SLA, HFT, real-time video) | Even with materialization disabled, per-request overhead may be too high for single-digit-millisecond latency budgets | A dedicated serving framework (TorchServe, Triton, plain FastAPI). ZenML's training pipeline produces the model; the serving layer consumes it. But **benchmark first** — ZenML deployers with tuning may still meet your needs |
-| Continuous data streaming | Pipelines are batch-oriented, not stream processors | Kafka/Flink/Spark Streaming, with periodic pipeline runs on accumulated batches |
+| Continuous data streaming | Pipelines are batch-oriented, not always-on stream processors. ZenML streaming events can publish live telemetry from a running step, but they are best-effort events, not stream processing. | Kafka/Flink/Spark Streaming for always-on streams; ZenML for batches, deployed HTTP pipelines, or live progress events from running steps |
 | Simple ETL with no ML | ZenML *can* run data pipelines, but if there's no model, no ML artifacts, and no need for artifact versioning/comparison, a lighter tool may be a better fit | Airflow, Prefect, dbt, or a cron job — though ZenML is fine if the team is already using it |
 | One-off data migrations | Not repeatable, no artifacts worth tracking | A script |
 | Dashboard / UI | Not a computation workflow | Streamlit, Grafana, your frontend framework |
@@ -98,6 +102,11 @@ Be direct with users about this — it saves them weeks of wasted effort.
 | CI/CD for model code | Different lifecycle than model training | GitHub Actions, GitLab CI |
 
 **The gray area**: Some components *could* be pipelines but probably shouldn't be for an MVP. Hyperparameter tuning, for example — it's better to start with a fixed training pipeline and add tuning later than to build a complex tuning pipeline first. Same with A/B testing infrastructure.
+
+**Streaming boundary**: If the user says "streaming," separate three concrete cases:
+1. "I need to process an endless Kafka topic" → not a ZenML pipeline; use a stream processor.
+2. "I need an HTTP endpoint that handles one request at a time" → consider `pipeline.deploy()` and benchmark it.
+3. "I need users to see progress/tokens while a step runs" → ZenML streaming events may fit, but they are telemetry only; durable facts still belong in metadata/artifacts.
 
 #### Present your classification
 
@@ -206,6 +215,8 @@ After the interview, produce a `pipeline_architecture.md` architecture spec. If 
 - **Data sources**: [Where input data comes from]
 - **Key artifacts**: [What outputs matter and why]
 - **Orchestrator requirements**: [Local, K8s, Vertex, etc.]
+- **Resource needs**: [CPU/GPU/memory, preemptible vs non-preemptible, whether ZenML Pro resource pools are expected]
+- **Secrets**: [Private/personal credentials vs shared project secrets]
 - **Model Control Plane**: [Model name if applicable]
 
 ### Pipeline 2: [Name] (Phase 2)
@@ -274,7 +285,7 @@ When you spot these, don't just say "that's over-engineering." Explain the concr
 - **Be opinionated.** Users come to you because they want guidance, not because they want you to agree with everything. If something doesn't make sense as a pipeline, say so clearly and explain why.
 - **Use concrete examples.** Instead of "consider the failure domains," say "if your data ingestion fails at 2 AM, do you want that to block tomorrow's training run? If not, those should be separate pipelines."
 - **Respect existing work.** If the user already has components running (a training script, a data loader, a serving API), build the architecture around what they have rather than proposing they rewrite everything.
-- **Be honest about ZenML's boundaries.** ZenML is great for batch ML workflows. It's not a streaming platform, not a feature store, not a monitoring system. Knowing what it isn't helps users make better architectural decisions.
+- **Be honest about ZenML's boundaries.** ZenML is great for batch ML workflows and can also serve some HTTP pipeline deployments. It is not an always-on stream-processing engine, not a feature store, and not a monitoring system. ZenML streaming events are live telemetry from running steps, not durable stream processing. Knowing these boundaries helps users make better architectural decisions.
 - **Adjust depth to the user.** If someone says "I just want a simple training pipeline," don't force them through a 20-question interview. If someone describes a complex multi-team platform, go deep.
 - **Use structured questioning strategically.** Multi-choice questions for classification decisions (pipeline vs. not, MVP selection). Open-ended for the initial dump and for clarifying ambiguous requirements. If no question tool is available, do this in plain chat with numbered options.
 
@@ -298,6 +309,27 @@ Before diving into pipeline architecture, check whether the user is even at the 
 - They can't describe the input data format or the expected output. If the schematics of the data aren't understood, building pipeline steps around them will produce brittle code.
 
 **What to do:** Gently redirect. "It sounds like you're still exploring what works. That's an important phase — trying to put it in a pipeline now would slow you down. Finish your experiment in a notebook, get it producing good results, and then come back and we'll turn it into a pipeline."
+
+## Resource and Secret Scoping
+
+Ask these questions when the user mentions GPUs, shared clusters, quotas, high fan-out, or expensive compute:
+
+- "Do multiple teams or projects share the same GPUs/CPUs?"
+- "Should any steps be non-preemptible, meaning they should not be interrupted to free capacity?"
+- "Are you on ZenML Pro, and are resource pools enabled?"
+- "Is this a dynamic pipeline with many runtime-created steps, or a static pipeline?"
+
+Guidance:
+- `ResourceSettings` expresses per-step demand: GPU count, CPU count, memory, preemptibility, and custom pool keys.
+- In ZenML Pro, resource pools govern capacity, queuing, and preemption for eligible **dynamic pipeline** steps.
+- Do not assume resource pools exist in OSS or for static pipelines.
+- If the user is on Databricks or another backend with its own compute sizing settings, check backend-specific settings instead of assuming generic `ResourceSettings` controls machine shape.
+
+Ask this when credentials appear:
+
+> "Are these credentials personal/private to one user, or shared project credentials?"
+
+ZenML can have private and public secrets with the same name. When ambiguity matters, downstream implementation should use `Client().get_secret("name", private=True)` for personal/private secrets or `private=False` for shared/public secrets.
 
 ## Data Flow Awareness
 

@@ -292,7 +292,7 @@ Always suggest this first:
 For every flagged pattern, include the relevant ZenML docs. Common Flyte-migration links:
 
 - Dynamic pipelines: `https://docs.zenml.io/how-to/steps-pipelines/dynamic-pipelines`
-- Scheduling: `https://docs.zenml.io/how-to/steps-pipelines/schedule-a-pipeline`
+- Scheduling: `https://docs.zenml.io/how-to/steps-pipelines/scheduling`
 - Orchestrators: `https://docs.zenml.io/stacks/stack-components/orchestrators`
 - Containerization: `https://docs.zenml.io/how-to/containerization/containerization`
 - Service connectors / auth: `https://docs.zenml.io/how-to/infrastructure-deployment/auth-management`

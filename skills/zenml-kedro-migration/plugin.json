@@ -1,6 +1,6 @@
 {
   "name": "zenml-kedro-migration",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Migrate Kedro pipelines and projects to idiomatic ZenML pipelines with concept mapping, Data Catalog to artifact translation, code translation, and unsupported pattern flagging",
   "author": {
     "name": "ZenML Team",

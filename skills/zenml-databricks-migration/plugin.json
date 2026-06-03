@@ -1,6 +1,6 @@
 {
   "name": "zenml-databricks-migration",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Migrate Databricks Workflows (Lakeflow Jobs) to idiomatic ZenML pipelines with concept mapping, notebook refactoring, code translation, and unsupported pattern flagging",
   "author": {
     "name": "ZenML Team",

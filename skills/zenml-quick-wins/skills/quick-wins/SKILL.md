@@ -3,8 +3,9 @@ name: zenml-quick-wins
 description: >-
   Implements ZenML quick wins to enhance MLOps workflows. Investigates codebase 
   and stack configuration, recommends high-priority improvements, and implements 
-  metadata logging, experiment tracking, alerts, scheduling, secrets management, 
-  tags, git hooks, HTML reports, and Model Control Plane setup.
+  metadata logging, experiment tracking, alerts, scheduling, secrets management,
+  tags, git hooks, HTML reports, Model Control Plane setup, live streaming events,
+  and resource-pool-aware step requests.
   Use when: user wants to improve their ZenML setup, asks about MLOps best practices,
   mentions "quick wins", wants to enhance pipelines, or needs help with ZenML features
   like experiment tracking, alerting, scheduling, or model governance.
@@ -98,6 +99,8 @@ Both agents run concurrently and return structured summaries. Synthesize their f
 | No `Model()` usage | No model governance | #12 Model Control Plane |
 | Hardcoded credentials | Security risk | #7 Secrets |
 | No `Schedule` imports | Manual runs | #5 Scheduling |
+| `publish(` or token/progress callbacks | Live intermediate output need | #16 Live streaming events |
+| `gpu_count`, shared clusters, many dynamic steps | Resource contention risk | #17 Resource pools / requests |
 
 ### Fallback: Manual Investigation
 
@@ -297,6 +300,8 @@ Incorporate this context into your recommendations in Phase 4.
 | 13 | [Parent Docker images](quick-wins-catalog.md#13-parent-docker-images) | ⭐⭐⭐ | 🔥🔥 | Container reg |
 | 14 | [ZenML docs MCP server](quick-wins-catalog.md#14-zenml-docs-mcp-server) | ⭐ | 🔥🔥 | IDE with MCP |
 | 15 | [CLI export formats](quick-wins-catalog.md#15-cli-export-formats) | ⭐ | 🔥 | None |
+| 16 | [Live streaming events](quick-wins-catalog.md#16-live-streaming-events) | ⭐⭐ | 🔥🔥 | Server streaming enabled |
+| 17 | [Resource pools / resource requests](quick-wins-catalog.md#17-resource-pools--resource-requests-zenml-pro) | ⭐⭐ | 🔥🔥🔥 | Pro + dynamic pipelines |
 
 ### Prioritization Matrix
 
@@ -317,10 +322,12 @@ Incorporate this context into your recommendations in Phase 4.
 
 **Advanced:**
 10. **#6 Warm pools**, **#13 Parent images** — Performance optimization
+11. **#16 Live streaming events** — Real-time progress/token updates before a step returns
+12. **#17 Resource pools / requests** — Shared GPU/CPU capacity control for dynamic pipelines on ZenML Pro
 
 **Developer experience:**
-11. **#14 ZenML docs MCP** — Better IDE assistance
-12. **#15 CLI export** — Scripting/automation
+13. **#14 ZenML docs MCP** — Better IDE assistance
+14. **#15 CLI export** — Scripting/automation
 
 Use `AskUserQuestion` to ask which quick wins they want to implement based on your findings and their priorities. Present the most relevant options first based on the context gathered in previous phases.
 
@@ -478,12 +485,12 @@ claude mcp add zenmldocs --transport http https://docs.zenml.io/~gitbook/mcp
 - Metadata: https://docs.zenml.io/concepts/metadata
 - Tags: https://docs.zenml.io/concepts/tags
 - Models: https://docs.zenml.io/concepts/models
-- Secrets: https://docs.zenml.io/concepts/secrets
+- Secrets: https://docs.zenml.io/how-to/secrets/secrets
 - Scheduling: https://docs.zenml.io/how-to/steps-pipelines/scheduling
 - Alerters: https://docs.zenml.io/stacks/stack-components/alerters
 - Experiment Trackers: https://docs.zenml.io/stacks/stack-components/experiment-trackers
 - Code Repositories: https://docs.zenml.io/user-guides/production-guide/connect-code-repository
-- Containerization: https://docs.zenml.io/concepts/containerization
+- Containerization: https://docs.zenml.io/how-to/containerization/containerization
 - Visualizations: https://docs.zenml.io/concepts/artifacts/visualizations
 
 ---

@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "MLOps and LLMOps workflow automation tools for ZenML users",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "homepage": "https://docs.zenml.io",
     "repository": "https://github.com/zenml-io/skills"
   },
@@ -15,8 +15,8 @@
     {
       "name": "zenml-quick-wins",
       "source": "./skills/zenml-quick-wins",
-      "description": "Guided implementation of ZenML MLOps best practices including metadata logging, experiment tracking, alerters, scheduling, secrets management, and Model Control Plane setup",
-      "version": "1.0.0",
+      "description": "Guided implementation of ZenML MLOps best practices including metadata logging, experiment tracking, alerts, schedules and triggers, secrets, streaming events, and Model Control Plane setup",
+      "version": "1.0.1",
       "author": {
         "name": "ZenML Team",
         "url": "https://github.com/zenml-io"
@@ -37,8 +37,8 @@
     {
       "name": "zenml-scoping",
       "source": "./skills/zenml-scoping",
-      "description": "Scope and decompose ML workflow ideas into realistic ZenML pipeline architectures through an in-depth interview process",
-      "version": "1.0.0",
+      "description": "Scope and decompose ML workflow ideas into realistic ZenML architectures, including pipelines, deployments, resources, and streaming boundaries",
+      "version": "1.0.2",
       "author": {
         "name": "ZenML Team",
         "url": "https://github.com/zenml-io"
@@ -59,8 +59,8 @@
     {
       "name": "zenml-pipeline-authoring",
       "source": "./skills/zenml-pipeline-authoring",
-      "description": "Author ZenML pipelines with steps, artifacts, Docker settings, materializers, metadata logging, secrets management, YAML configuration, and custom visualizations",
-      "version": "1.0.0",
+      "description": "Author ZenML pipelines with steps, artifacts, Docker settings, materializers, metadata, secrets, deployments, streaming events, YAML configuration, and visualizations",
+      "version": "1.0.2",
       "author": {
         "name": "ZenML Team",
         "url": "https://github.com/zenml-io"
@@ -83,7 +83,7 @@
       "name": "zenml-airflow-migration",
       "source": "./skills/zenml-airflow-migration",
       "description": "Migrate Apache Airflow DAGs and workflows to idiomatic ZenML pipelines with concept mapping, code translation, and unsupported pattern flagging",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "ZenML Team",
         "url": "https://github.com/zenml-io"
@@ -106,7 +106,7 @@
       "name": "zenml-argo-migration",
       "source": "./skills/zenml-argo-migration",
       "description": "Migrate Argo Workflows to idiomatic ZenML pipelines with concept mapping, code translation, Kubernetes-native pattern flagging, and redesign guidance",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "ZenML Team",
         "url": "https://github.com/zenml-io"
@@ -130,7 +130,7 @@
       "name": "zenml-databricks-migration",
       "source": "./skills/zenml-databricks-migration",
       "description": "Migrate Databricks Workflows (Lakeflow Jobs) to idiomatic ZenML pipelines with concept mapping, notebook refactoring, code translation, and unsupported pattern flagging",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "ZenML Team",
         "url": "https://github.com/zenml-io"
@@ -154,7 +154,7 @@
       "name": "zenml-prefect-migration",
       "source": "./skills/zenml-prefect-migration",
       "description": "Migrate Prefect flows and workflows to idiomatic ZenML pipelines with concept mapping, dynamic-execution analysis, code translation, and unsupported pattern flagging",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "ZenML Team",
         "url": "https://github.com/zenml-io"
@@ -177,7 +177,7 @@
       "name": "zenml-vertexai-migration",
       "source": "./skills/zenml-vertexai-migration",
       "description": "Migrate Vertex AI Pipelines (KFP v2 / PipelineJob workflows) to idiomatic ZenML pipelines with concept mapping, artifact-contract translation, GCPC rewrite guidance, and unsupported pattern flagging",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "ZenML Team",
         "url": "https://github.com/zenml-io"
@@ -203,7 +203,7 @@
       "name": "zenml-azureml-migration",
       "source": "./skills/zenml-azureml-migration",
       "description": "Migrate Azure Machine Learning SDK v2 pipelines to idiomatic ZenML pipelines with concept mapping, Azure-aware compute translation, code patterns, and unsupported pattern flagging",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "ZenML Team",
         "url": "https://github.com/zenml-io"
@@ -227,7 +227,7 @@
       "name": "zenml-kedro-migration",
       "source": "./skills/zenml-kedro-migration",
       "description": "Migrate Kedro pipelines and projects to idiomatic ZenML pipelines with concept mapping, Data Catalog to artifact translation, code translation, and unsupported pattern flagging",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "ZenML Team",
         "url": "https://github.com/zenml-io"
@@ -250,7 +250,7 @@
       "name": "zenml-flyte-migration",
       "source": "./skills/zenml-flyte-migration",
       "description": "Migrate Flyte workflows, tasks, and LaunchPlans to idiomatic ZenML pipelines with concept mapping, code translation, and unsupported pattern flagging",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "ZenML Team",
         "url": "https://github.com/zenml-io"
@@ -274,7 +274,7 @@
       "name": "zenml-dagster-migration",
       "source": "./skills/zenml-dagster-migration",
       "description": "Migrate Dagster assets, ops, jobs, and asset-graph workflows to idiomatic ZenML pipelines with concept mapping, asset-boundary planning, code translation, and unsupported pattern flagging",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "ZenML Team",
         "url": "https://github.com/zenml-io"
@@ -297,7 +297,7 @@
       "name": "zenml-metaflow-migration",
       "source": "./skills/zenml-metaflow-migration",
       "description": "Migrate Metaflow flows to idiomatic ZenML pipelines with FlowSpec mapping, artifact translation, and unsupported pattern flagging",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "ZenML Team",
         "url": "https://github.com/zenml-io"
@@ -321,7 +321,7 @@
       "name": "zenml-sagemaker-migration",
       "source": "./skills/zenml-sagemaker-migration",
       "description": "Migrate Amazon SageMaker Pipelines and workflow code to idiomatic ZenML pipelines with concept mapping, code translation, and unsupported pattern flagging",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "ZenML Team",
         "url": "https://github.com/zenml-io"

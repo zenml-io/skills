@@ -1,6 +1,6 @@
 {
   "name": "zenml-sagemaker-migration",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Migrate Amazon SageMaker Pipelines and workflow code to idiomatic ZenML pipelines with concept mapping, code translation, and unsupported pattern flagging",
   "author": {
     "name": "ZenML Team",

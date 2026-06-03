@@ -1,6 +1,6 @@
 {
   "name": "zenml-dagster-migration",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Migrate Dagster assets, ops, jobs, and asset-graph workflows to idiomatic ZenML pipelines with concept mapping, asset-boundary planning, code translation, and unsupported pattern flagging",
   "author": {
     "name": "ZenML Team",

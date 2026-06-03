@@ -1,7 +1,7 @@
 {
   "name": "zenml-quick-wins",
-  "version": "1.0.0",
-  "description": "Guided implementation of ZenML MLOps best practices including metadata logging, experiment tracking, alerters, scheduling, secrets management, and Model Control Plane setup",
+  "version": "1.0.1",
+  "description": "Guided implementation of ZenML MLOps best practices including metadata logging, experiment tracking, alerts, schedules and triggers, secrets, streaming events, and Model Control Plane setup",
   "author": {
     "name": "ZenML Team",
     "email": "hello@zenml.io",

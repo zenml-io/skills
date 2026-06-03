@@ -1,6 +1,6 @@
 {
   "name": "zenml-vertexai-migration",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Migrate Vertex AI Pipelines (KFP v2 / PipelineJob workflows) to idiomatic ZenML pipelines with concept mapping, artifact-contract translation, GCPC rewrite guidance, and unsupported pattern flagging",
   "author": {
     "name": "ZenML Team",

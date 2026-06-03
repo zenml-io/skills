@@ -302,8 +302,8 @@ Always suggest this as the immediate next step:
 For every flagged pattern, include links to the relevant ZenML docs:
 
 - SageMaker orchestrator: `https://docs.zenml.io/stacks/stack-components/orchestrators/sagemaker`
-- Scheduling: `https://docs.zenml.io/concepts/steps_and_pipelines/scheduling`
-- Dynamic pipelines: `https://docs.zenml.io/concepts/steps_and_pipelines/dynamic_pipelines`
+- Scheduling: `https://docs.zenml.io/how-to/steps-pipelines/scheduling`
+- Dynamic pipelines: `https://docs.zenml.io/how-to/steps-pipelines/dynamic-pipelines`
 - Service connectors / auth: `https://docs.zenml.io/how-to/infrastructure-deployment/auth-management/aws-service-connector`
 - Artifact and stack concepts: `https://docs.zenml.io/stacks`
 - Models / MCP: `https://docs.zenml.io/how-to/model-management-metrics/model-control-plane/register-a-model`

@@ -126,12 +126,12 @@ For each pattern from Phase 1, classify it as direct, approximate, or absent. Us
 - `@resources` -> `ResourceSettings`
 - `@kubernetes` -> Kubernetes orchestrator or step operator settings
 - `@conda` / `@pypi` / Fast Bakery -> `DockerSettings` and container-image design
-- `@schedule` -> `Schedule(...)`, with target orchestrator support and cron semantics called out explicitly
-- dynamic-pipeline-heavy flows -> only treat as a realistic target when the chosen orchestrator is one of ZenML's documented dynamic-pipeline backends (`local`, `local_docker`, `kubernetes`, `sagemaker`, `vertex`, `azureml`)
+- `@schedule` -> OSS/orchestrator-backed `Schedule(...)`, with target orchestrator support, singular `zenml pipeline schedule ...` lifecycle commands where supported, and cron semantics called out explicitly; ZenML Pro schedule triggers are separate snapshot trigger objects
+- dynamic-pipeline-heavy flows -> only treat as a realistic target when the chosen orchestrator is one of ZenML's documented dynamic-pipeline backends (`local`, `local_docker`, `kubernetes`, `sagemaker`, `vertex`, `azureml`); dynamic pipelines default to `STOP_ON_FAILURE`, support `FAIL_FAST` with caveats, and do not support `CONTINUE_ON_FAILURE`
 - `Config` -> YAML config / `.with_options(config_file=...)`
 - `current` -> `get_step_context()` for narrow step/run metadata lookup only; broader `current.*` usage must be flagged
 - `metaflow.client` -> `zenml.client.Client` only for limited lineage/artifact lookup; richer history traversal should be flagged
-- Runner / Deployer flows -> snapshots, deployments, SDK or API-triggered runs
+- Runner / Deployer flows -> snapshots, deployments, SDK or API-triggered runs; use ZenML Pro schedule/platform-event triggers attached to snapshots only when their supported trigger semantics fit the source behavior
 
 **Absent / must flag for review:**
 - `@catch`
@@ -141,7 +141,7 @@ For each pattern from Phase 1, classify it as direct, approximate, or absent. Us
 - `@checkpoint`
 - `@batch` as a direct portable equivalent
 - portable `@timeout` semantics
-- `@trigger` / `@trigger_on_finish`
+- `@trigger` / `@trigger_on_finish`; ZenML Pro platform-event triggers may fit supported ZenML platform lifecycle events, but Metaflow trigger semantics are not a direct 1:1 migration
 - business logic that depends on rich `current.*` state
 - Outerbounds-only features with no clear ZenML surface
 
@@ -265,7 +265,7 @@ schedule = Schedule(cron_expression="0 2 * * *")
 my_pipeline.with_options(schedule=schedule)()
 ```
 
-Always note that scheduling support depends on the orchestrator. Check the scheduling table in [references/concept-map.md](references/concept-map.md).
+Always note that scheduling support depends on the orchestrator. In OSS, a `Schedule(...)` is attached to the pipeline run and managed with singular `zenml pipeline schedule ...` commands where supported. In ZenML Pro, schedule triggers are server-side trigger objects attached to snapshots (`zenml trigger schedule create`, `attach`, `list`, `delete`). Metaflow `@schedule`, `@trigger`, and `@trigger_on_finish` semantics still need explicit review rather than a direct rename. Check the scheduling table in [references/concept-map.md](references/concept-map.md).
 
 #### Handling approximate translations
 
@@ -374,10 +374,11 @@ Always suggest this first:
 
 Use current official ZenML docs when suggesting follow-up reading:
 
-- Dynamic pipelines: `https://docs.zenml.io/concepts/steps_and_pipelines/dynamic_pipelines`
-- Scheduling: `https://docs.zenml.io/concepts/steps_and_pipelines/scheduling`
+- Dynamic pipelines: `https://docs.zenml.io/how-to/steps-pipelines/dynamic-pipelines`
+- Scheduling: `https://docs.zenml.io/how-to/steps-pipelines/scheduling`
+- ZenML Pro triggers: `https://docs.zenml.io/getting-started/zenml-pro/triggers`
 - Materializers: `https://docs.zenml.io/concepts/artifacts/materializers`
-- Pipeline deployments: `https://docs.zenml.io/concepts/deployment`
+- Pipeline deployments: `https://docs.zenml.io/how-to/deployment/deployment`
 - Service connectors: `https://docs.zenml.io/concepts/service_connectors`
 - Stack components: `https://docs.zenml.io/concepts/stack_components`
 - Models / Model Control Plane: `https://docs.zenml.io/concepts/models`
@@ -427,7 +428,7 @@ Metaflow joins can inherit artifacts implicitly and resolve ambiguity with `merg
 
 ### Dynamic control flow is possible, but not the default
 
-Metaflow can decide graph shape at step runtime with `self.next(...)`. ZenML static pipelines decide structure when the pipeline function runs. Runtime-dependent branching and fan-out generally require `@pipeline(dynamic=True)`. As of the current docs, dynamic pipelines are supported on `local`, `local_docker`, `kubernetes`, `sagemaker`, `vertex`, and `azureml`, but still carry important feature and runtime limitations that should be called out in the migration report.
+Metaflow can decide graph shape at step runtime with `self.next(...)`. ZenML static pipelines decide structure when the pipeline function runs. Runtime-dependent branching and fan-out generally require `@pipeline(dynamic=True)`. Dynamic pipelines are supported on `local`, `local_docker`, `kubernetes`, `sagemaker`, `vertex`, and `azureml`, but still carry important feature and runtime limitations: the default execution mode is `STOP_ON_FAILURE`, `FAIL_FAST` is supported with caveats around already-running inline steps, and `CONTINUE_ON_FAILURE` is unsupported.
 
 ### Resume is not caching
 
@@ -444,7 +445,7 @@ Metaflow often expresses dependencies as decorators like `@conda`, `@pypi`, or O
 | Keeping a `FlowSpec` class and sprinkling ZenML decorators on methods | ZenML steps should be standalone callables with explicit inputs/outputs | Extract step logic into functions and rebuild the DAG in a `@pipeline` |
 | Translating `self.*` to module-level mutable state | Loses artifact persistence and lineage | Return typed values from steps and pass them downstream explicitly |
 | Silently replacing `merge_artifacts(inputs)` with "take one branch" | Changes join behavior | Write explicit merge/conflict logic and flag it |
-| Rewriting `foreach` as a plain Python `for` loop without calling out the semantic change | Loses orchestrated fan-out, observability, and parallelism | Use dynamic pipelines where supported, or flag the redesign |
+| Rewriting `foreach` as a plain Python `for` loop without calling out the semantic change | Loses orchestrated fan-out, observability, and parallelism | Use dynamic pipelines where supported and document execution modes (`STOP_ON_FAILURE` default, `FAIL_FAST` caveats, no `CONTINUE_ON_FAILURE`), or flag the redesign |
 | Pretending `@catch` is just `try/except` | Metaflow changes pipeline failure semantics | Return explicit error objects or redesign the failure boundary |
 | Treating `resume` as identical to ZenML caching | They decide reuse differently | Explain the difference in the migration report |
 | Mapping `@batch` directly to a generic remote stack | Hides real compute and orchestration differences | Flag as redesign and choose the target compute model explicitly |

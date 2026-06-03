@@ -1,6 +1,6 @@
 {
   "name": "zenml-airflow-migration",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Migrate Apache Airflow DAGs and workflows to idiomatic ZenML pipelines with concept mapping, code translation, and unsupported pattern flagging",
   "author": {
     "name": "ZenML Team",

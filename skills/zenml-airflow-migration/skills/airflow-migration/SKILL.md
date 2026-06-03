@@ -72,7 +72,7 @@ For each component identified in Phase 1, classify it using the mapping type (di
 - `BranchPythonOperator` → conditional pipeline logic, **but only if branching depends on pipeline parameters, not upstream step outputs**
 - XCom for data passing → artifact passing (different persistence, serialization, and lifecycle semantics)
 - `params` / `dag_run.conf` → pipeline parameters / run configuration
-- Scheduling → `Schedule` object (depends on orchestrator support)
+- Scheduling → OSS/orchestrator-backed `Schedule(...)` runs, with lifecycle managed through `zenml pipeline schedule ...` where the orchestrator supports it; ZenML Pro schedule triggers are separate server-side trigger objects attached to snapshots
 - Connections → stack components + service connectors + secrets
 - Variables → ZenML config + secrets store
 - TaskGroups → Python composition functions (no UI grouping equivalent)
@@ -198,7 +198,7 @@ schedule = Schedule(cron_expression="0 2 * * *")  # Was schedule="@daily" or "0 
 my_pipeline.with_options(schedule=schedule)()
 ```
 
-Not all orchestrators support scheduling. Check [references/concept-map.md](references/concept-map.md) for the orchestrator support table.
+Not all orchestrators support scheduling. In OSS, a `Schedule(...)` is attached to the pipeline run and the schedule lifecycle is managed with singular `zenml pipeline schedule ...` commands where supported by the orchestrator. In ZenML Pro, schedule triggers are server-side trigger objects attached to snapshots (`zenml trigger schedule create`, `attach`, `list`, `delete`). Do not present Airflow scheduler semantics, catchup, trigger rules, or sensors as 1:1 ZenML equivalents. Check [references/concept-map.md](references/concept-map.md) for the orchestrator support table.
 
 #### Handling approximate translations
 
@@ -263,7 +263,8 @@ After generating the ZenML project, produce a `MIGRATION_REPORT.md` in the proje
 
 ## Scheduling
 - **Original**: `schedule='@daily'`, catchup=False
-- **Migrated**: `Schedule(cron_expression='0 0 * * *')` — requires orchestrator with scheduling support
+- **Migrated OSS path**: `Schedule(cron_expression='0 0 * * *')` — requires an orchestrator with scheduling support and uses `zenml pipeline schedule ...` for supported lifecycle operations
+- **ZenML Pro option**: schedule triggers are snapshot trigger objects (`zenml trigger schedule create` + `zenml trigger schedule attach`), not Airflow DAG scheduler parity
 
 ## What's NOT Migrated
 [List any Airflow infrastructure that lives outside the DAG: connections, variables, pools, etc., with guidance on the ZenML equivalent]
@@ -297,11 +298,11 @@ Always suggest this as the immediate next step. The quick-wins skill adds produc
 
 For every flagged pattern in the migration report, include a link to the relevant ZenML documentation page. Don't just say "set up a trigger" — link to the specific docs page. Common links to include:
 
-- Scheduling: `https://docs.zenml.io/how-to/steps-pipelines/schedule-a-pipeline`
+- Scheduling: `https://docs.zenml.io/how-to/steps-pipelines/scheduling`
 - Service connectors (for auth): `https://docs.zenml.io/how-to/infrastructure-deployment/auth-management`
 - Dynamic pipelines: `https://docs.zenml.io/how-to/steps-pipelines/dynamic-pipelines`
 - Orchestrators (general): `https://docs.zenml.io/stacks/stack-components/orchestrators`
-- Triggers and event-driven pipelines: `https://docs.zenml.io/how-to/steps-pipelines/trigger-a-pipeline`
+- ZenML Pro triggers: `https://docs.zenml.io/getting-started/zenml-pro/triggers`
 
 #### 3. Suggest installing the ZenML docs MCP server
 
@@ -374,7 +375,7 @@ Airflow tasks run in worker processes managed by a central scheduler. ZenML step
 
 ### Scheduling ownership
 
-Airflow owns scheduling natively (the scheduler is a core component). ZenML delegates scheduling to the orchestrator — not all orchestrators support it, and the scheduling semantics depend on the orchestrator. Always check orchestrator compatibility.
+Airflow owns scheduling natively (the scheduler is a core component). ZenML has two different scheduling paths: OSS/orchestrator schedules created with `Schedule(...)` and managed with `zenml pipeline schedule ...` where supported, and ZenML Pro schedule/platform-event triggers attached to snapshots. Airflow trigger rules, sensors, timetables, and catchup behavior still need explicit review because they are not 1:1 ZenML equivalents.
 
 ## Anti-Patterns in Migration
 
@@ -383,9 +384,9 @@ Airflow owns scheduling natively (the scheduler is a core component). ZenML dele
 | Keeping `ti.xcom_pull()` calls | ZenML has no task instance context | Wire data through step inputs/outputs |
 | Passing file paths between steps | Works locally, breaks on remote orchestrators | Pass data as artifacts (DataFrames, dicts, etc.) |
 | Translating `BranchPythonOperator` that branches on task outputs | ZenML can't branch on artifact values at graph construction | Redesign: run all branches but no-op when condition is false, or split into separate pipelines |
-| Mapping `expand()` over upstream output to a simple loop | Loses Airflow's task-level retry/observability per item | Use ZenML dynamic pipelines (if cardinality known) or multi-run pattern (if runtime-determined) |
+| Mapping `expand()` over upstream output to a simple loop | Loses Airflow's task-level retry/observability per item | Use ZenML dynamic pipelines when runtime fan-out is the right fit: default `STOP_ON_FAILURE`, `FAIL_FAST` supported with caveats, `CONTINUE_ON_FAILURE` unsupported; otherwise use a multi-run redesign |
 | Ignoring trigger rules during migration | Silently changes pipeline behavior | Always flag non-default trigger rules; never drop them without user awareness |
-| Translating sensors to `time.sleep()` loops | Consumes compute slot for entire wait | Consider orchestrator scheduling, external triggers, or polling steps with timeouts |
+| Translating sensors to `time.sleep()` loops | Consumes compute slot for entire wait and loses Airflow sensor semantics | Consider orchestrator schedules, ZenML Pro snapshot triggers for supported schedule/platform events, external eventing, or bounded polling steps with timeouts |
 | Replicating Airflow's `params` override behavior | `dag_run.conf` override semantics are Airflow-specific | Use ZenML pipeline parameters with explicit precedence (YAML config > defaults) |
 
 ## References
