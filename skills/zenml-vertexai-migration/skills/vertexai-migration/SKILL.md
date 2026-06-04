@@ -296,8 +296,8 @@ Say this explicitly:
 When relevant, include specific links:
 
 - Vertex orchestrator: `https://docs.zenml.io/stacks/stack-components/orchestrators/vertex`
-- Scheduling: `https://docs.zenml.io/concepts/steps_and_pipelines/scheduling`
-- Dynamic pipelines: `https://docs.zenml.io/concepts/steps_and_pipelines/dynamic_pipelines`
+- Scheduling: `https://docs.zenml.io/how-to/steps-pipelines/scheduling`
+- Dynamic pipelines: `https://docs.zenml.io/how-to/steps-pipelines/dynamic-pipelines`
 - External artifacts: `https://docs.zenml.io/user-guides/starter-guide/manage-artifacts#consuming-external-artifacts-within-a-pipeline`
 - Materializers: `https://docs.zenml.io/concepts/artifacts/materializers`
 - Experiment trackers: `https://docs.zenml.io/stacks/stack-components/experiment-trackers`

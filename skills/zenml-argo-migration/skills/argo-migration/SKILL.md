@@ -79,12 +79,12 @@ For each component identified in Phase 1, classify it using the mapping type (di
 
 **Approximate translations (translate with caveats):**
 - `Workflow` / `WorkflowTemplate` -> `@pipeline` plus a pipeline run or reusable Python module
-- `CronWorkflow` -> `Schedule(...)` on a supported orchestrator
+- `CronWorkflow` -> OSS/orchestrator-backed `Schedule(...)` on a supported orchestrator, with `zenml pipeline schedule ...` for supported lifecycle operations; ZenML Pro schedule triggers are separate snapshot trigger objects
 - `container` / `script` template -> `@step` with Python logic, `DockerSettings`, or `subprocess.run(...)`
 - output parameter via file or `outputs.result` -> explicit step return value
 - artifact passing -> ZenML artifacts and materializers
 - `when` on values -> dynamic pipeline branching or explicit soft-conditional logic
-- `withItems` / `withParam` -> dynamic fanout using real list artifacts and `.map()`
+- `withItems` / `withParam` -> dynamic fanout using real list artifacts and `.map()`; for dynamic pipelines, default to `STOP_ON_FAILURE`, use `FAIL_FAST` only with caveats, and do not recommend `CONTINUE_ON_FAILURE`
 - `onExit` -> redesign using hooks, idempotent cleanup, execution modes, or external cleanup control
 - `resource` / `http` templates -> explicit SDK or API calls inside steps
 - Kubernetes resources / placement settings -> orchestrator-specific settings documented as portability loss
@@ -96,7 +96,7 @@ For each component identified in Phase 1, classify it using the mapping type (di
 - shared PVC / `emptyDir` filesystem contracts across steps
 - sidecars, daemon containers, and same-pod helper services
 - synchronization mutexes / semaphores
-- Argo Events graphs (`EventSource` + `Sensor` + dependency logic)
+- Argo Events graphs (`EventSource` + `Sensor` + dependency logic); ZenML Pro platform-event triggers may cover supported ZenML platform lifecycle events, but they are not Argo Events graph parity
 - non-Python arbitrary images that cannot be sensibly wrapped in a Python-capable ZenML step environment
 
 #### Present the migration plan
@@ -206,7 +206,9 @@ schedule = Schedule(cron_expression="0 2 * * *")
 my_pipeline.with_options(schedule=schedule)()
 ```
 
-Always note that scheduling is orchestrator-dependent and that CronWorkflow-specific behavior like timezone and concurrency policy may need extra handling.
+Always note that scheduling is orchestrator-dependent. In OSS, this is a `Schedule(...)` on a pipeline run, managed with singular `zenml pipeline schedule ...` commands where the orchestrator supports lifecycle operations. In ZenML Pro, schedule triggers are separate server-side trigger objects attached to snapshots (`zenml trigger schedule create`, `attach`, `list`, `delete`). CronWorkflow-specific behavior like timezone and concurrency policy may need extra handling.
+
+**Argo Events -> trigger redesign**: Do not claim Argo Events parity. ZenML Pro platform-event triggers attach supported ZenML platform events to snapshots, but Argo `EventSource`/`Sensor` dependency graphs usually need external eventing plus a ZenML snapshot/API/deployment trigger design.
 
 **Suspend / pause-resume note**:
 
@@ -274,7 +276,7 @@ After generating the ZenML project, produce a `MIGRATION_REPORT.md` in the proje
 ## Approximate Translations
 | Argo Template / Concept | ZenML Equivalent | What Changed |
 |---|---|---|
-| CronWorkflow | Schedule(...) | Schedule support depends on orchestrator; concurrency policy may need extra handling |
+| CronWorkflow | `Schedule(...)` or ZenML Pro schedule trigger | OSS schedule support depends on orchestrator and uses `zenml pipeline schedule ...`; Pro schedule triggers attach to snapshots; concurrency/timezone policy may need extra handling |
 
 ## Flagged for Review
 | Argo Pattern | Severity | Issue | Suggested Redesign |
@@ -283,7 +285,8 @@ After generating the ZenML project, produce a `MIGRATION_REPORT.md` in the proje
 
 ## Scheduling
 - **Original**: CronWorkflow `0 2 * * *`, timezone `UTC`
-- **Migrated**: `Schedule(cron_expression="0 2 * * *")`
+- **Migrated OSS path**: `Schedule(cron_expression="0 2 * * *")`, managed with `zenml pipeline schedule ...` where supported
+- **ZenML Pro option**: a schedule trigger attached to the target snapshot (`zenml trigger schedule create` + `zenml trigger schedule attach`)
 - **Note**: Verify orchestrator scheduling support and any concurrency / timezone semantics
 
 ## Kubernetes-Native / Infrastructure Assumptions
@@ -325,12 +328,12 @@ Always suggest this as the immediate next step:
 
 For every flagged pattern, include a link to the relevant ZenML documentation:
 
-- Scheduling: `https://docs.zenml.io/how-to/steps-pipelines/schedule-a-pipeline`
+- Scheduling: `https://docs.zenml.io/how-to/steps-pipelines/scheduling`
 - Dynamic pipelines: `https://docs.zenml.io/how-to/steps-pipelines/dynamic-pipelines`
-- Triggers and event-driven pipelines: `https://docs.zenml.io/how-to/steps-pipelines/trigger-a-pipeline`
+- ZenML Pro triggers: `https://docs.zenml.io/getting-started/zenml-pro/triggers`
 - Orchestrators: `https://docs.zenml.io/stacks/stack-components/orchestrators`
 - Containerization: `https://docs.zenml.io/how-to/containerization/containerization`
-- Secrets management: `https://docs.zenml.io/how-to/project-setup-and-management/secret-management`
+- Secrets management: `https://docs.zenml.io/how-to/secrets/secrets`
 - Service connectors / auth: `https://docs.zenml.io/how-to/infrastructure-deployment/auth-management`
 
 #### 3. Suggest installing the ZenML docs MCP server
@@ -418,7 +421,7 @@ Argo can branch on task result states directly. ZenML control flow is much more 
 | Replacing shared-volume logic with `/tmp` across multiple steps | `/tmp` is container-local, not workflow-global | Collapse into one step or externalize state |
 | Rewriting `withParam` as JSON strings passed between steps | Keeps Argo's serialization hack and loses ZenML typing | Return real `list[...]` artifacts and fan out dynamically |
 | Mapping `onExit` to a success hook | Success hooks do not behave like workflow finalizers | Use `try/finally`, failure hooks, or external cleanup orchestration |
-| Claiming Argo Events maps directly to native ZenML event graphs | Public ZenML docs do not describe Argo-Events-style parity | Use external event infrastructure to invoke ZenML runs |
+| Claiming Argo Events maps directly to native ZenML event graphs | ZenML Pro platform-event triggers are snapshot trigger objects for supported ZenML platform events, not Argo Events graph parity | Use supported ZenML Pro triggers where they fit; otherwise use external event infrastructure to invoke ZenML runs, snapshots, or deployment endpoints |
 
 ## References
 

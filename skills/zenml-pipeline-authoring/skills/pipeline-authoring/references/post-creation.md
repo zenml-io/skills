@@ -183,7 +183,13 @@ print(f"Accuracy: {metrics['accuracy']}")
 
 ## Scheduling
 
-Run pipelines on recurring schedules. Schedules are managed through the orchestrator — not all orchestrators support them.
+Run pipelines on recurring schedules. There are two schedule families:
+
+- **OSS/orchestrator schedules**: attach `Schedule(...)` to a pipeline run/snapshot and manage it with `zenml pipeline schedule ...` commands.
+- **ZenML Pro schedule triggers**: paid, server-side trigger objects attached to snapshots and managed with `zenml trigger schedule ...` commands.
+
+Most pipeline-authoring work starts with OSS/orchestrator schedules. Use Pro trigger schedules when the user is explicitly working with ZenML Pro snapshots and wants centralized trigger lifecycle management.
+
 
 ### Orchestrator support
 
@@ -251,7 +257,7 @@ zenml pipeline schedule delete <SCHEDULE_NAME> --hard
 
 Pipeline deployment creates persistent HTTP servers that wrap your pipeline for real-time, request-response interactions. This replaces the deprecated Model Deployer stack components.
 
-Use this as a quick-start pattern. For advanced options (auth, middleware, custom routes, SPA hosting), see the [deployment docs](https://docs.zenml.io/how-to/deployment/deployment).
+Use this as a quick-start pattern. For advanced options (auth, middleware, custom routes, SPA hosting, and `DeploymentSettings`), see the [deployment docs](https://docs.zenml.io/how-to/deployment/deployment).
 
 ### Quick start
 
@@ -299,6 +305,35 @@ response.raise_for_status()
 print(response.json())
 ```
 
+### DeploymentSettings
+
+Use `DeploymentSettings` for pipeline-level HTTP server and ASGI app configuration. These settings apply to the deployed pipeline as a whole, not to individual steps.
+
+```python
+from typing import Any
+
+from zenml import pipeline
+from zenml.config import DeploymentSettings
+
+settings = DeploymentSettings(
+    app_title="Fraud Scoring Service",
+    cors={"allow_origins": ["https://app.example.com"]},
+    thread_pool_size=32,
+    uvicorn_host="0.0.0.0",
+    uvicorn_port=8080,
+)
+
+@pipeline(settings={"deployment": settings})
+def scoring_pipeline(score_request: dict[str, Any] | None = None) -> dict:
+    return score_step(score_request or {})
+```
+
+Good use cases for `DeploymentSettings`:
+- Custom endpoint paths and API docs paths
+- CORS and secure headers
+- Middleware, request logging, auth, metrics, and custom ASGI app extensions
+- Thread pool size and uvicorn host/port/logging configuration
+
 ### Optimizing latency
 
 If your deployment has latency requirements, consider these tuning options before concluding ZenML can't meet your SLA:
@@ -311,6 +346,41 @@ If your deployment has latency requirements, consider these tuning options befor
 
 - **Online ML inference**: Real-time predictions (fraud detection, recommendations)
 - **LLM agent workflows**: Multi-step AI reasoning with RAG, tools, guardrails
-- **Real-time data processing**: Streaming analytics, anomaly detection
+- **Real-time data processing**: Request-response analytics or anomaly detection where each HTTP request can be handled by a deployed pipeline
 
 For full deployment configuration (CORS, custom endpoints, middleware, authentication, SPA hosting, DeploymentSettings), see the [deployment docs](https://docs.zenml.io/how-to/deployment/deployment).
+
+---
+
+## Live Streaming Events
+
+Use `zenml.streaming.publish()` when a running step needs to send live telemetry before it returns: LLM token streaming, progress bars, long-running status updates, or dashboard events.
+
+```python
+from zenml import step
+from zenml.streaming import flush, publish
+
+@step
+def generate_answer(prompt: str) -> str:
+    tokens = []
+    for index, token in enumerate(stream_llm(prompt)):
+        tokens.append(token)
+        publish(
+            {"text": token},
+            kind="token",
+            correlation_id="answer-1",
+            index=index,
+        )
+
+    # Usually unnecessary; use only when a later action depends on delivery.
+    flush(timeout=2.0)
+    return "".join(tokens)
+```
+
+Important boundaries:
+- Streaming must be enabled on the ZenML server.
+- Events are best-effort live telemetry, not durable records.
+- Payloads must be JSON dicts and are capped at 64 KiB.
+- The local producer queue can drop old events under load.
+- Use metadata or artifacts for facts that must survive after the run.
+- Inside a `@pipeline(dynamic=True)` body, `publish()` attributes events to the pipeline run rather than a specific step.

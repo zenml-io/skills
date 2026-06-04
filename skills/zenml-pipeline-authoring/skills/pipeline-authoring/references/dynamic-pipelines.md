@@ -22,7 +22,13 @@ For fixed-topology ML DAGs (ingest → preprocess → train → evaluate), use s
 | SagemakerOrchestrator | Yes | No |
 | AzureMLOrchestrator | Yes | No |
 
-**Important**: Only `STOP_ON_FAILURE` execution mode is supported for dynamic pipelines.
+## Execution modes and failure behavior
+
+Dynamic pipelines default to `STOP_ON_FAILURE`. They currently support:
+
+- `STOP_ON_FAILURE`: the default and safest choice.
+- `FAIL_FAST`: supported, but already-running inline steps may finish before the pipeline stops; isolated steps can be shut down immediately.
+- `CONTINUE_ON_FAILURE`: not supported for dynamic pipelines. ZenML warns and uses `STOP_ON_FAILURE` instead. If the workflow really needs to continue after a known failure, catch that exception in pipeline logic and make the fallback explicit.
 
 ## Step runtime modes
 
@@ -35,6 +41,30 @@ def lightweight_step() -> None: ...
 ```
 
 Use `runtime="isolated"` for parallel steps and resource isolation. Use `runtime="inline"` for fast, sequential steps.
+
+## Artifact name substitutions
+
+Dynamic pipelines support artifact name substitutions in the same way as regular pipelines:
+
+```python
+from typing import Annotated
+from zenml import ArtifactConfig, pipeline, step
+
+@step(substitutions={"suffix": "validated"})
+def produce() -> Annotated[int, ArtifactConfig(name="score_{suffix}")]:
+    return 1
+
+@step
+def consume(score: int) -> None:
+    print(score)
+
+@pipeline(dynamic=True)
+def dynamic_pipeline() -> None:
+    score = produce()
+    consume(score)
+```
+
+Caveat: `child_pipeline.embed(...)` does not apply the child pipeline's own configuration. If the child defines substitutions, tags, settings, hooks, or other pipeline-level config, that config is ignored when embedded; the parent run's config governs the inline steps.
 
 ## `.load()` vs `.chunk()` — the critical distinction
 
@@ -52,9 +82,11 @@ def filtered_pipeline() -> None:
 
     for index, value in enumerate(items.load()):   # load: iterate + filter
         if value > 0:
-            chunk = items.chunk(index=index)         # chunk: wire DAG edge
+            chunk = items.chunk(index=index)       # chunk: wire DAG edge
             process(chunk)
 ```
+
+For large artifacts, prefer passing futures/artifacts directly to downstream steps instead of `.load()` when you do not need Python-side control flow.
 
 ## Map/reduce with `.map()`
 
@@ -85,7 +117,7 @@ def map_reduce():
 `.map()` input sources:
 - A single list-like output artifact
 - A list of output artifacts
-- The output of a `.map()` or `.product()` call (if single output)
+- The output of a `.map()` or `.product()` call (if the mapped/product step has a single output)
 
 ## Cartesian product with `.product()`
 
@@ -125,6 +157,8 @@ doubles = [f.load() for f in double]  # [2, 4]
 triples = [f.load() for f in triple]  # [3, 6]
 ```
 
+`unpack()` works for both `.map()` and `.product()` results.
+
 ## Parallel execution with `.submit()`
 
 `.submit()` returns a `StepRunFuture` for non-blocking execution:
@@ -151,6 +185,85 @@ def parallel_pipeline():
 
 With `runtime="isolated"`, submitted steps run in separate containers. With `runtime="inline"`, they run in separate threads.
 
+## Child pipelines inside dynamic pipelines
+
+Dynamic pipelines can call other dynamic pipelines from inside the pipeline body:
+
+```python
+from zenml import pipeline, step
+
+@step
+def produce_number() -> int:
+    return 42
+
+@pipeline(dynamic=True)
+def child_pipeline():
+    return produce_number()
+
+@step
+def consume_number(value: int) -> None:
+    print(value)
+
+@pipeline(dynamic=True)
+def parent_pipeline():
+    child_output = child_pipeline()  # synchronous child run
+    consume_number(child_output)
+```
+
+Key behavior:
+- Only dynamic pipelines can be called as child pipelines.
+- Child pipelines run on the same stack as the parent.
+- Child calls are allowed in pipeline bodies, not inside step functions.
+- Child outputs can be `None`, a single artifact, or a tuple of artifacts, and can be passed directly to downstream steps.
+
+### `child_pipeline.submit(...)`
+
+Use `.submit(...)` for a concurrent child run:
+
+```python
+@pipeline(dynamic=True)
+def parent_pipeline_concurrent():
+    future = child_pipeline.submit()
+    child_output = future.result()
+    consume_number(child_output)
+```
+
+### `child_pipeline.embed(...)`
+
+Use `.embed(...)` to reuse the child pipeline body inside the parent run without creating a separate child run:
+
+```python
+@pipeline(dynamic=True)
+def parent_pipeline_inline():
+    child_output = child_pipeline.embed()
+    consume_number(child_output)
+```
+
+Embedded child pipelines are useful for code reuse, but they are not failure-isolated and do not get their own dashboard run.
+
+`embed(...)` limitations:
+- The child pipeline's own config is ignored: settings, retry, cache/log flags, environment, secrets, tags, substitutions, model, hooks, and `depends_on` templates.
+- Per-step Docker overrides declared through the child pipeline are ignored; the parent image is used for inline isolated steps.
+- Exceptions in the embedded body abort the parent run.
+
+If those boundaries matter, call `child_pipeline(...)` or `child_pipeline.submit(...)` instead so ZenML creates a real child run.
+
+## Build, code, Docker, and token inheritance
+
+Child runs share the parent's orchestration environment, image, and source bundle:
+
+- No new Docker build is triggered for child calls.
+- The child snapshot inherits the parent's build, code reference, and code path.
+- The child's code and dependencies must already be available in the parent image.
+- Pipeline-level Docker settings on the child are overridden by the parent's settings.
+- Nested runs share the parent's API-token lineage; automation built around run-scoped tokens should assume access is limited to the root run and descendants, not sibling or unrelated runs.
+
+This applies to `child_pipeline(...)`, `child_pipeline.submit(...)`, and `child_pipeline.embed(...)`.
+
+## Resume/idempotency caveat
+
+Child run identity depends on call order. If the first `my_child()` call becomes `pipeline:my_child` and the second becomes `pipeline:my_child_2`, inserting or reordering calls before them shifts those IDs. On resume, shifted IDs can cause previously completed child runs to execute again. The same caveat applies to step invocation IDs.
+
 ## YAML config for dynamic pipelines
 
 Use `depends_on` to make steps configurable via YAML:
@@ -172,16 +285,19 @@ steps:
 
 ```python
 from zenml.client import Client
+
 Client().trigger_pipeline(
     snapshot_name_or_id=<ID>,
-    run_configuration={"parameters": {"my_param": 3}}
+    run_configuration={"parameters": {"my_param": 3}},
 )
 ```
 
 ## Limitations
 
-- Only `STOP_ON_FAILURE` execution mode supported
-- Logging not threadsafe for concurrent steps (logs may interleave)
-- `.map()` only works over artifacts from the same pipeline run (not external artifacts)
-- Chunk size for mapped collection loading defaults to 1, not yet configurable
-- A failure in one submitted step does not automatically stop others
+- `CONTINUE_ON_FAILURE` is not supported for dynamic pipelines; ZenML falls back to `STOP_ON_FAILURE`.
+- `FAIL_FAST` does not immediately cancel already-running inline steps; isolated steps can be shut down.
+- Logging is not threadsafe for concurrent steps, so logs may interleave.
+- `.map()` only works over artifacts from the same pipeline run, not raw data or external artifacts.
+- Chunk size for mapped collection loading defaults to 1 and is not yet configurable.
+- A failure in one submitted step does not automatically stop all other already-running work unless the execution mode and runtime allow it.
+

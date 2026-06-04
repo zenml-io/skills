@@ -28,7 +28,7 @@ Prefect and ZenML look similar at first glance because both are Python-first and
 
 - **Prefect** runs the flow body like regular Python at runtime. That means the flow can branch on task outputs, inspect states, submit new tasks dynamically, and use pause/suspend semantics while the run is already in progress.
 - **ZenML static pipelines** compile a DAG before steps run. Step outputs are versioned artifacts, not ordinary in-memory values available during pipeline construction.
-- **ZenML dynamic pipelines** recover part of Prefect's runtime flexibility, but they are still an approximation rather than a full state-model match. As of the current ZenML docs, dynamic pipelines are explicitly marked **experimental** and support only a subset of orchestrators.
+- **ZenML dynamic pipelines** recover part of Prefect's runtime flexibility, but they are still an approximation rather than a full state-model match. They default to `STOP_ON_FAILURE`; `FAIL_FAST` is supported with caveats around already-running inline steps; `CONTINUE_ON_FAILURE` is not supported for dynamic pipelines. They also support only a subset of orchestrators.
 
 So migration is never just "rename `@flow` to `@pipeline`". The real job is to decide which Prefect behaviors:
 
@@ -83,11 +83,11 @@ For each component identified in Phase 1, classify it as direct / approximate / 
 - Nested flows → pipeline composition
 - `.submit()` / `.map()` → dynamic pipelines or orchestrator-driven parallelism
 - Blocks → split into secrets + service connectors + stack settings + YAML config
-- Deployments / work pools → schedules + orchestrator choice + runtime config
-- Simple cron-like schedules → `Schedule(...)` when the target orchestrator supports scheduling
+- Deployments / work pools → schedules + orchestrator choice + runtime config; Prefect pauses, workers, work-pool semantics, and automations still need explicit redesign
+- Simple cron-like schedules → OSS/orchestrator-backed `Schedule(...)` when the target orchestrator supports scheduling, with `zenml pipeline schedule ...` for supported lifecycle operations; ZenML Pro schedule triggers are separate snapshot trigger objects
 - Result persistence / serializers → artifacts + materializers
 - Flow/task hooks → ZenML hooks and alerters
-- Pause / suspend → dynamic waits, explicit approval steps, or split workflows
+- Pause / suspend → dynamic waits, explicit approval steps, split workflows, or deployments where HTTP serving is the real goal; do not present Prefect pause/suspend state semantics as 1:1 ZenML behavior
 
 **Absent / redesign-required patterns (flag for human review):**
 - `allow_failure()`
@@ -165,7 +165,7 @@ Dynamic pipelines are the closest ZenML equivalent for:
 - runtime fan-out over same-run artifacts,
 - runtime-shaped workflows.
 
-But they are not a universal substitute for Prefect's state model. When dynamic pipelines are needed, call that out clearly in the migration report.
+But they are not a universal substitute for Prefect's state model. When dynamic pipelines are needed, call that out clearly in the migration report: default `STOP_ON_FAILURE`, `FAIL_FAST` supported with caveats, and `CONTINUE_ON_FAILURE` unsupported. For `allow_failure()`, `return_state=True`, or state-inspection flows, prefer explicit success/error artifacts over execution-mode tricks.
 
 **3. Treat failure/state features as a data-model redesign, not a scheduling trick**
 
@@ -238,7 +238,7 @@ After generating the ZenML project, produce a `MIGRATION_REPORT.md` in the proje
 ## Approximate Translations
 | Prefect Pattern | ZenML Equivalent | What Changed |
 |---|---|---|
-| Deployment schedule | `Schedule(...)` | Scheduling support depends on orchestrator |
+| Deployment schedule | `Schedule(...)` or ZenML Pro schedule trigger | OSS scheduling support depends on orchestrator and uses `zenml pipeline schedule ...`; Pro schedule triggers attach to snapshots; Prefect automations/work-pool behavior needs redesign |
 | Secret Block | ZenML secret | Config lives in a different system |
 
 ## Flagged for Review
@@ -292,11 +292,12 @@ This should almost always be the next step:
 
 For flagged items, link to the most relevant ZenML docs. Common links:
 
-- Execution model: `https://docs.zenml.io/concepts/steps_and_pipelines/execution`
-- Dynamic pipelines: `https://docs.zenml.io/concepts/steps_and_pipelines/dynamic_pipelines`
-- Scheduling: `https://docs.zenml.io/concepts/steps_and_pipelines/scheduling`
+- Execution model: `https://docs.zenml.io/how-to/steps-pipelines/execution`
+- Dynamic pipelines: `https://docs.zenml.io/how-to/steps-pipelines/dynamic-pipelines`
+- Scheduling: `https://docs.zenml.io/how-to/steps-pipelines/scheduling`
+- ZenML Pro triggers: `https://docs.zenml.io/getting-started/zenml-pro/triggers`
 - Service connectors: `https://docs.zenml.io/concepts/service_connectors`
-- Secrets: `https://docs.zenml.io/concepts/secrets`
+- Secrets: `https://docs.zenml.io/how-to/secrets/secrets`
 
 #### 3. Suggest installing the ZenML docs MCP server
 
@@ -364,16 +365,16 @@ Prefect Blocks combine multiple concerns. ZenML splits them across secrets, conn
 
 ### Prefect Deployments ≠ ZenML pipeline deployments
 
-Prefect Deployments are batch-run configuration. ZenML pipeline deployments are long-running HTTP services. For scheduled batch runs, the closer ZenML concepts are usually schedules, orchestrators, and sometimes snapshots — not HTTP deployments.
+Prefect Deployments are batch-run configuration. ZenML pipeline deployments are long-running HTTP services. For scheduled batch runs, the closer ZenML concepts are usually OSS/orchestrator schedules (`Schedule(...)` plus `zenml pipeline schedule ...` where supported), ZenML Pro schedule triggers attached to snapshots, orchestrators, and snapshots — not HTTP deployments. Prefect Automations, pauses, and work-pool behavior still need explicit redesign rather than a direct rename.
 
 ## Anti-Patterns in Migration
 
 | Anti-pattern | Why it is wrong | What to do instead |
 |---|---|---|
-| Replacing `allow_failure()` with a global continue-on-failure mode | Changes dependency-level failure semantics | Redesign with explicit success/error artifacts |
+| Replacing `allow_failure()` with a global continue-on-failure mode | Changes dependency-level failure semantics; `CONTINUE_ON_FAILURE` is also unsupported for ZenML dynamic pipelines | Redesign with explicit success/error artifacts |
 | Translating runtime branches into static `if` statements on step outputs | Static pipelines cannot branch on artifact values | Use dynamic pipelines or redesign |
 | Turning all Blocks into environment variables | Loses schema, discoverability, and concern separation | Split into secrets, connectors, stack config, YAML |
-| Treating Prefect Deployments as ZenML HTTP deployments | They solve different problems | Map scheduled batch execution to schedules/orchestrators |
+| Treating Prefect Deployments as ZenML HTTP deployments | They solve different problems | Map scheduled batch execution to OSS/orchestrator schedules, ZenML Pro snapshot triggers where appropriate, and orchestrator/runtime config |
 | Assuming Dask/Ray task-runner behavior survives automatically | Concurrency and isolation models differ | Re-evaluate infra and step boundaries explicitly |
 | Silently dropping `cache_key_fn` logic | Can change business semantics, not just performance | Flag and redesign caching explicitly |
 

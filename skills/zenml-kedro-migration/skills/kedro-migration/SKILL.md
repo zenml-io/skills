@@ -321,10 +321,10 @@ Always suggest this first:
 
 For every flagged pattern, include relevant ZenML documentation links when they help:
 
-- YAML configuration: `https://docs.zenml.io/concepts/steps_and_pipelines/yaml_configuration`
-- Secrets: `https://docs.zenml.io/concepts/secrets`
-- Dynamic pipelines: `https://docs.zenml.io/concepts/steps_and_pipelines/dynamic_pipelines`
-- Containerization: `https://docs.zenml.io/concepts/containerization`
+- YAML configuration: `https://docs.zenml.io/how-to/steps-pipelines/yaml-configuration`
+- Secrets: `https://docs.zenml.io/how-to/secrets/secrets`
+- Dynamic pipelines: `https://docs.zenml.io/how-to/steps-pipelines/dynamic-pipelines`
+- Containerization: `https://docs.zenml.io/how-to/containerization/containerization`
 - Step operators: `https://docs.zenml.io/stacks/stack-components/step-operators/custom`
 
 #### 3. Suggest installing the ZenML docs MCP server

@@ -46,9 +46,9 @@ $skill-installer install the zenml skills from github.com/zenml-io/skills
 
 | Skill | Description | Install |
 |-------|-------------|---------|
-| `zenml-quick-wins` | Analyze your setup, recommend high-impact improvements, and implement features like metadata logging, experiment tracking, alerts, and model governance | `/plugin install zenml-quick-wins@zenml` |
-| `zenml-scoping` | Scope and decompose ML workflow ideas into realistic ZenML pipeline architectures through a structured interview process | `/plugin install zenml-scoping@zenml` |
-| `zenml-pipeline-authoring` | Author ZenML pipelines with steps, artifacts, Docker settings, materializers, metadata, secrets, YAML config, and visualizations | `/plugin install zenml-pipeline-authoring@zenml` |
+| `zenml-quick-wins` | Analyze your setup, recommend high-impact improvements, and implement features like metadata logging, experiment tracking, alerts, schedules/triggers, streaming events, and model governance | `/plugin install zenml-quick-wins@zenml` |
+| `zenml-scoping` | Scope and decompose ML workflow ideas into realistic ZenML architectures, including pipelines, deployments, resources, and streaming boundaries | `/plugin install zenml-scoping@zenml` |
+| `zenml-pipeline-authoring` | Author ZenML pipelines with steps, artifacts, Docker settings, materializers, metadata, secrets, deployments, streaming events, YAML config, and visualizations | `/plugin install zenml-pipeline-authoring@zenml` |
 
 ### Migration Skills
 

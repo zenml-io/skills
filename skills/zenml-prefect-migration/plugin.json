@@ -1,6 +1,6 @@
 {
   "name": "zenml-prefect-migration",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Migrate Prefect flows and workflows to idiomatic ZenML pipelines with concept mapping, dynamic-execution analysis, code translation, and unsupported pattern flagging",
   "author": {
     "name": "ZenML Team",
