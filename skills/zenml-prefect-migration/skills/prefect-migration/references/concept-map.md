@@ -37,6 +37,8 @@ Complete mapping of Prefect concepts to their ZenML equivalents. Each entry is c
 | `pause_flow_run()` | Dynamic wait / approval pattern / split workflow | approximate | Partial substitute only; not a drop-in orchestration-state match. |
 | `suspend_flow_run()` | Dynamic wait + resume-compatible setup / split workflow | approximate / absent | Often redesign-required for durable resume semantics. |
 
+**Flow-level hooks need a dynamic pipeline to fire at the run level.** Prefect's flow `on_completion`/`on_failure` fire once per flow run. Mapped to `@pipeline(on_success=...)`/`@pipeline(on_failure=...)`, that run-level firing only happens on a dynamic pipeline (`@pipeline(dynamic=True)`). On a static pipeline the same kwargs become per-step defaults that every step inherits and never fire at the run level, so attach the hook to a single terminal step to get one notification per run. Task-level `on_completion`/`on_failure` map to `@step(on_success=...)`/`@step(on_failure=...)`, which fire per step on both pipeline types.
+
 ## Execution and Concurrency
 
 | Prefect Concept | ZenML Equivalent | Mapping | Notes |

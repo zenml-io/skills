@@ -115,6 +115,8 @@ Complete mapping of Kedro concepts to their closest ZenML equivalents. Each entr
 | `before_command_run` | No direct equivalent | absent | ZenML CLI / Python execution does not expose a matching hook. |
 | `after_command_run` | No direct equivalent | absent | Same issue. |
 
+**Pipeline-level hooks fire differently on dynamic vs static pipelines.** `@pipeline(on_success=...)`/`@pipeline(on_failure=...)` fire once at the run level only on a dynamic pipeline (`@pipeline(dynamic=True)`). On a static pipeline the same kwargs are per-step defaults that every step inherits, and they never fire once at the run level. To reproduce Kedro's single `after_pipeline_run`/`on_pipeline_error` callback on a static pipeline, attach the hook to one terminal step instead.
+
 ## Plugins and Deployment
 
 | Kedro Concept | ZenML Equivalent | Mapping | Notes |

@@ -5,7 +5,7 @@ description: >-
   and stack configuration, recommends high-priority improvements, and implements 
   metadata logging, experiment tracking, alerts, scheduling, secrets management,
   tags, git hooks, HTML reports, Model Control Plane setup, live streaming events,
-  and resource-pool-aware step requests.
+  lifecycle hooks, and resource-pool-aware step requests.
   Use when: user wants to improve their ZenML setup, asks about MLOps best practices,
   mentions "quick wins", wants to enhance pipelines, or needs help with ZenML features
   like experiment tracking, alerting, scheduling, or model governance.
@@ -101,6 +101,7 @@ Both agents run concurrently and return structured summaries. Synthesize their f
 | No `Schedule` imports | Manual runs | #5 Scheduling |
 | `publish(` or token/progress callbacks | Live intermediate output need | #16 Live streaming events |
 | `gpu_count`, shared clusters, many dynamic steps | Resource contention risk | #17 Resource pools / requests |
+| `try/except` notify, no `on_failure`/`on_success` | No failure awareness | #18 Lifecycle hooks |
 
 ### Fallback: Manual Investigation
 
@@ -302,6 +303,7 @@ Incorporate this context into your recommendations in Phase 4.
 | 15 | [CLI export formats](quick-wins-catalog.md#15-cli-export-formats) | ⭐ | 🔥 | None |
 | 16 | [Live streaming events](quick-wins-catalog.md#16-live-streaming-events) | ⭐⭐ | 🔥🔥 | Server streaming enabled |
 | 17 | [Resource pools / resource requests](quick-wins-catalog.md#17-resource-pools--resource-requests-zenml-pro) | ⭐⭐ | 🔥🔥🔥 | Pro + dynamic pipelines |
+| 18 | [Lifecycle hooks](quick-wins-catalog.md#18-lifecycle-hooks) | ⭐ | 🔥🔥 | None (alerter for notifications) |
 
 ### Prioritization Matrix
 
@@ -317,7 +319,7 @@ Incorporate this context into your recommendations in Phase 4.
 
 **Operations tier:**
 7. **#5 Scheduling** — Automation
-8. **#4 Alerts** — Awareness
+8. **#4 Alerts** or **#18 Lifecycle hooks** — Awareness on failure/success
 9. **#8 Smoke tests** — Faster iteration
 
 **Advanced:**
