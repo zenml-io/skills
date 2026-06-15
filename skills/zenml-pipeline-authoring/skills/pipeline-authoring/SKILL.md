@@ -5,7 +5,7 @@ description: >-
   steps, dynamic vs static pipelines, artifact data flow, ExternalArtifact,
   YAML configuration, DockerSettings and ResourceSettings for remote execution,
   custom materializers, metadata logging, secrets management, pipeline deployments,
-  live streaming events, and custom visualizations. Use this skill
+  live streaming events, lifecycle hooks, and custom visualizations. Use this skill
   whenever asked to write a ZenML pipeline, create ZenML steps, make a pipeline
   work on Kubernetes/Vertex/SageMaker, add Docker settings, write a materializer,
   create a custom visualization, handle "works locally but fails on cloud" issues,
@@ -584,7 +584,7 @@ Key points:
 
 ## Retry Configuration
 
-For flaky external services or transient cloud errors, use `StepRetryConfig(max_retries=3, delay=10, backoff=2)` on `@step(retry=...)` or `@pipeline(retry=...)`. YAML equivalent uses `retry:` at step or top level. See ZenML docs for hooks (`on_failure`, `on_success`).
+For flaky external services or transient cloud errors, use `StepRetryConfig(max_retries=3, delay=10, backoff=2)` on `@step(retry=...)` or `@pipeline(retry=...)`. YAML equivalent uses `retry:` at step or top level. To run code on failure or success, see [Lifecycle Hooks](#lifecycle-hooks).
 
 ---
 
@@ -612,7 +612,17 @@ For real-time inference or agent workflows, pipelines can be deployed as persist
 
 When a running step needs to surface progress before it returns — for example LLM tokens, progress updates, or live dashboard events — use `zenml.streaming.publish()`. Treat streaming events as best-effort live telemetry, not storage: payloads are JSON dicts, size-capped, can be dropped under load, and require server-side streaming support. Use metadata or artifacts for durable records.
 
-See [references/post-creation.md](references/post-creation.md) for detailed patterns for all of the above.
+### Lifecycle Hooks
+
+Run custom code at lifecycle points of a step or run with `on_start`, `on_success`, `on_failure`, `on_end` (plus `on_pause`/`on_resume` at run scope on dynamic pipelines). The common case is notifying on failure: `@step(on_failure=alerter_failure_hook)` posts to the active stack's alerter. `on_failure` and `on_end` optionally receive the `BaseException`. The others take no arguments.
+
+One trap to respect: `@pipeline(on_*=...)` behaves differently on static vs dynamic pipelines. On a **static** pipeline it is a per-step default that each step inherits, and it never fires once at the run level. On a **dynamic** pipeline it fires once at the run level. To notify once per run on a static pipeline, attach the hook to a single terminal step.
+
+`run_hook(func, ...)` records an arbitrary `CUSTOM` invocation from inside a step or dynamic pipeline, useful for instrumenting agent tool/model calls. Each lifecycle and custom firing is recorded as a queryable `HookInvocation`.
+
+See [references/hooks.md](references/hooks.md) for the full lifecycle table, signatures, `run_hook`, `on_init`/`on_cleanup`, and invocation querying.
+
+See [references/post-creation.md](references/post-creation.md) for detailed patterns for tags, Model Control Plane, scheduling, and deployment.
 
 ---
 
@@ -655,6 +665,7 @@ See [references/post-creation.md](references/post-creation.md) for detailed patt
 - [references/docker-settings.md](references/docker-settings.md) — Full DockerSettings field catalog
 - [references/materializers.md](references/materializers.md) — Materializer authoring guide
 - [references/yaml-config.md](references/yaml-config.md) — Complete YAML config schema
+- [references/hooks.md](references/hooks.md) — Lifecycle hooks, signatures, run_hook, invocation querying
 - [references/post-creation.md](references/post-creation.md) — Tags, Model Control Plane, scheduling, deployment
 - [references/runtime-portability-and-approvals.md](references/runtime-portability-and-approvals.md) — uv/package discovery, Apple Silicon → AMD64 builds, Kubernetes troubleshooting, approval gates
 

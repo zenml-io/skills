@@ -792,3 +792,5 @@ def work() -> None:
 ```
 
 **Translation note**: Airflow callbacks receive a rich context dict with `task_instance`, `dag_run`, `execution_date`, etc. ZenML hooks are simpler — success hooks take no args, failure hooks receive the exception. If the original callback accessed Airflow-specific context (like `execution_date` or `dag_run.conf`), the logic needs adaptation.
+
+**DAG-level callbacks are run-level.** Task callbacks map cleanly to `@step(on_success=...)`/`@step(on_failure=...)`, which fire per step. A DAG-level `on_failure_callback`/`on_success_callback` (set in `default_args` or on the DAG) is run-level, so it maps to `@pipeline(on_success=...)`/`@pipeline(on_failure=...)`. Those pipeline-level kwargs fire once at the run level only on a dynamic pipeline (`@pipeline(dynamic=True)`). On a static pipeline they are per-step defaults that every step inherits and never fire at the run level, so put a run-level callback on a single terminal step instead.

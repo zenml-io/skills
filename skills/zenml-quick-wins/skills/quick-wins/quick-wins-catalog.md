@@ -223,6 +223,8 @@ def deployment_pipeline():
     deploy_step(model, approved=approved)
 ```
 
+For notifications tied to step/run success or failure rather than an explicit in-pipeline step, see [#18 Lifecycle Hooks](#18-lifecycle-hooks) with `alerter_failure_hook`/`alerter_success_hook`.
+
 **Docs:** https://docs.zenml.io/stacks/stack-components/alerters/slack
 
 ---
@@ -933,6 +935,81 @@ For eligible **dynamic pipelines**, ZenML Pro turns `ResourceSettings` into reso
 Use this quick win when the user mentions shared GPUs, fairness, quotas, preemption, runaway fan-out, or many dynamic steps. Be clear that resource pools are a paid ZenML Pro feature and only apply to dynamic pipelines today.
 
 **Docs:** https://docs.zenml.io/getting-started/zenml-pro/resource-pools
+
+---
+
+## 18. Lifecycle Hooks
+
+**Why:** Run code automatically when a step or run starts, succeeds, fails, or ends, without touching the step body. The cleanest way to notify on failure and to audit timing.
+
+### Notify on Failure (and Success)
+
+ZenML ships built-in alerter hooks that post to the active stack's alerter (Slack/Discord, see #4). Attach them per step:
+
+```python
+from zenml import step
+from zenml.hooks import alerter_failure_hook, alerter_success_hook
+
+@step(on_failure=alerter_failure_hook, on_success=alerter_success_hook)
+def train_model(data):
+    ...
+```
+
+This is more idiomatic than posting from inside a step (#4): the hook fires on the lifecycle event itself, including on failures the step never returns from.
+
+### Custom Hooks
+
+```python
+from zenml import get_step_context, step
+
+def on_failure(exception: BaseException):
+    step_name = get_step_context().step_run.name
+    print(f"{step_name} failed: {exception}")
+
+def on_end(exception=None):
+    # Runs on every attempt, success or failure. Good for timing/cleanup.
+    ...
+
+@step(on_failure=on_failure, on_end=on_end)
+def train_model(data):
+    ...
+```
+
+The four step hooks are `on_start`, `on_success`, `on_failure`, `on_end`. `on_failure` and `on_end` optionally receive the `BaseException`. The others take no arguments.
+
+### Static vs Dynamic Pipelines (read this before using `@pipeline(on_*=...)`)
+
+The same kwarg behaves differently depending on the pipeline type:
+
+- **Static pipeline:** `@pipeline(on_failure=notify)` is a per-step default that each step inherits. It does **not** fire once when the run fails. To notify once per run, attach the hook to a single terminal step.
+- **Dynamic pipeline** (`dynamic=True`): `@pipeline(on_failure=notify)` fires once at the run level and does not propagate to steps. Dynamic pipelines also support `on_pause` and `on_resume`.
+
+For most users (static pipelines), prefer step-level hooks.
+
+### Record and Query Custom Invocations
+
+Each hook firing is recorded as a queryable `HookInvocation`. Record arbitrary calls from inside a step with `run_hook`, useful for instrumenting agent tool/model calls:
+
+```python
+from zenml import run_hook, step
+
+@step
+def agent_step():
+    result = run_hook(call_tool, "search")  # records one CUSTOM invocation
+```
+
+```python
+from zenml.client import Client
+from zenml.enums import HookType
+
+invocations = Client().list_hook_invocations(pipeline_run_id=run.id, hook_type=HookType.CUSTOM)
+```
+
+CLI: `zenml hook-invocation list`.
+
+**Note:** `on_start`/`on_end`, `run_hook`, and invocation querying require a recent ZenML version (0.94+). `on_success`/`on_failure` work on older versions too.
+
+**Docs:** https://docs.zenml.io/how-to/steps-pipelines/hooks
 
 ---
 

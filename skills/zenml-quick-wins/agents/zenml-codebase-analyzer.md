@@ -34,7 +34,7 @@ Model( - Model Control Plane usage
 HTMLString - HTML report visualizations
 Schedule( - Scheduling configuration
 get_secret or Secret( - Secrets management
-@hook - Pipeline hooks
+on_failure= or on_success= or on_start= or on_end= - Lifecycle hooks
 ```
 
 ### 3. Quick Win Opportunities (Missing Patterns)
@@ -48,6 +48,7 @@ Look for these anti-patterns or missing features:
 | `@pipeline` | `Model(` usage | #12 Model Control Plane |
 | Training metrics (accuracy, loss) | `log_metadata` | #1 Metadata |
 | `.fit(` or `.train(` | Experiment tracker | #3 Autologging |
+| `try/except` notify in step | `on_failure=`/`on_success=` hooks | #18 Lifecycle hooks |
 
 ### 4. Security Concerns
 ```
