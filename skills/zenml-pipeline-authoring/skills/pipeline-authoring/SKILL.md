@@ -3,15 +3,19 @@ name: zenml-pipeline-authoring
 description: >-
   Author ZenML pipelines: @step/@pipeline decorators, type hints, multi-output
   steps, dynamic vs static pipelines, artifact data flow, ExternalArtifact,
-  YAML configuration, DockerSettings and ResourceSettings for remote execution,
-  custom materializers, metadata logging, secrets management, pipeline deployments,
-  live streaming events, lifecycle hooks, and custom visualizations. Use this skill
-  whenever asked to write a ZenML pipeline, create ZenML steps, make a pipeline
-  work on Kubernetes/Vertex/SageMaker, add Docker settings, write a materializer,
-  create a custom visualization, handle "works locally but fails on cloud" issues,
-  or configure pipeline YAML files. Even if the user doesn't explicitly mention
-  "pipeline authoring", use this skill when they ask to build an ML workflow,
-  data pipeline, or training pipeline with ZenML.
+  YAML configuration, step caching (enable_cache at pipeline, step, and YAML
+  level), DockerSettings and ResourceSettings for remote execution,
+  orchestrator settings for Kubernetes/Vertex/SageMaker, custom materializers,
+  metadata logging, secrets management, pipeline deployments, live streaming
+  events, lifecycle hooks, and custom visualizations. Use when asked to write
+  a ZenML pipeline or steps, fix or debug an existing ZenML pipeline, disable
+  or force caching or fix a step that reuses a stale cached result, make a
+  pipeline work on Kubernetes/Vertex/SageMaker, set resource requests or
+  orchestrator settings, add Docker settings, write a materializer for a
+  custom type, create a custom visualization, handle "works locally but fails
+  on cloud" issues, or configure pipeline YAML files. Even if the user doesn't
+  mention "pipeline authoring", use this skill when they ask to build, change,
+  or fix an ML workflow, data pipeline, or training pipeline with ZenML.
 ---
 
 # Author ZenML Pipelines

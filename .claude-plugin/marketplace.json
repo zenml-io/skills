@@ -59,8 +59,8 @@
     {
       "name": "zenml-pipeline-authoring",
       "source": "./skills/zenml-pipeline-authoring",
-      "description": "Author ZenML pipelines with steps, artifacts, Docker settings, materializers, metadata, secrets, deployments, streaming events, YAML configuration, and visualizations",
-      "version": "1.0.2",
+      "description": "Author ZenML pipelines with steps, artifacts, caching, Docker and resource settings, orchestrator settings, materializers, metadata, secrets, deployments, streaming events, YAML configuration, and visualizations",
+      "version": "1.0.3",
       "author": {
         "name": "ZenML Team",
         "url": "https://github.com/zenml-io"
