@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "MLOps and LLMOps workflow automation tools for ZenML users",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "homepage": "https://docs.zenml.io",
     "repository": "https://github.com/zenml-io/skills"
   },
@@ -77,6 +77,29 @@
         "docker",
         "materializers",
         "authoring"
+      ]
+    },
+    {
+      "name": "zenml-stacks",
+      "source": "./skills/zenml-stacks",
+      "description": "Build remote ZenML stacks end to end: create the missing cloud resources, register the components and stack, and prove GPU execution with a smoke test",
+      "version": "1.0.0",
+      "author": {
+        "name": "ZenML Team",
+        "url": "https://github.com/zenml-io"
+      },
+      "homepage": "https://docs.zenml.io",
+      "repository": "https://github.com/zenml-io/skills",
+      "license": "Apache-2.0",
+      "category": "mlops",
+      "keywords": [
+        "zenml",
+        "stacks",
+        "infrastructure",
+        "modal",
+        "kubernetes",
+        "aws",
+        "gpu"
       ]
     },
     {

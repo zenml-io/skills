@@ -36,6 +36,13 @@ No automated test framework is configured here. Treat structure validation as re
 
 ## Plugin-Specific Notes
 
+### zenml-stacks
+- One skill (`stack-builder`) with progressive disclosure: `SKILL.md` holds the phases (preflight, inventory, plan and one approval, create, register, smoke test, report), and target-specific commands live in `references/modal.md` and `references/aws-kubernetes.md`.
+- Unlike the Popular Stacks docs, the skill creates missing cloud resources (S3 bucket, ECR repository, IAM role, service connector, secrets). It never modifies or deletes anything it did not create, and labels everything it creates with `zenml-stack=<STACK_NAME>` so `references/teardown.md` can remove exactly that set.
+- A stack only counts as built once `references/smoke-test.md` passes: one GPU step on the step operator whose `Annotated` output loads back from the artifact store.
+- It does not create EKS clusters or GPU node groups; for Kubernetes it requires an existing cluster with GPU nodes and only adds a namespace-scoped access entry after explicit approval.
+- Chains to `zenml-pipeline-authoring` for writing pipelines that use the step operator and to `zenml-quick-wins` for production hardening.
+
 ### zenml-airflow-migration
 - The skill uses three reference files (`references/concept-map.md`, `references/code-patterns.md`, `references/gaps-and-flags.md`) for progressive disclosure — SKILL.md stays focused on the workflow, references are loaded on demand.
 - Post-migration, the skill chains to `zenml-quick-wins` and optionally `zenml-pipeline-authoring` for further enhancement.

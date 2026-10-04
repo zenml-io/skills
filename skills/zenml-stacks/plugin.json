@@ -1,0 +1,23 @@
+{
+  "name": "zenml-stacks",
+  "version": "1.0.0",
+  "description": "Build remote ZenML stacks end to end: create the missing cloud resources, register the components and stack, and prove GPU execution with a smoke test",
+  "author": {
+    "name": "ZenML Team",
+    "email": "hello@zenml.io",
+    "url": "https://github.com/zenml-io"
+  },
+  "homepage": "https://docs.zenml.io",
+  "repository": "https://github.com/zenml-io/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "zenml",
+    "stacks",
+    "infrastructure",
+    "modal",
+    "kubernetes",
+    "aws",
+    "gpu"
+  ],
+  "skills": "./skills/"
+}
